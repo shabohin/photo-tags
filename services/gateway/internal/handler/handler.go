@@ -26,7 +26,7 @@ func NewHandler(logger *logging.Logger, cfg *config.Config) *Handler {
 }
 
 // HealthCheck handles health check requests
-func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HealthCheck(w http.ResponseWriter, _ *http.Request) {
 	response := map[string]interface{}{
 		"status":    "ok",
 		"timestamp": time.Now().Format(time.RFC3339),

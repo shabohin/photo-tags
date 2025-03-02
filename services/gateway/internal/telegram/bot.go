@@ -113,7 +113,7 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 	log := b.logger.WithTraceID(traceID)
 
 	// Check if message contains photos or documents
-	if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
+	if len(update.Message.Photo) > 0 {
 		// Handle photo
 		groupID := uuid.New().String()
 		botLog := NewBotLogger(log.WithGroupID(groupID), groupID)
@@ -176,7 +176,7 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 // processMedia processes media files (photos and documents)
-func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotapi.Message, fileID, fileName, fileURL string) error {
+func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotapi.Message, _, fileName, fileURL string) error {
 	// Download file
 	resp, err := http.Get(fileURL)
 	if err != nil {

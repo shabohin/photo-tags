@@ -35,7 +35,7 @@ func MockResponse(statusCode int, body string) *http.Response {
 
 // MockServer creates a test server that returns a predefined response
 func MockServer(statusCode int, body string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(statusCode)
 		w.Write([]byte(body))
 	}))
