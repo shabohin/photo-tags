@@ -5,31 +5,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"net/http"
 	"path/filepath"
+	"strings"
+	"time"
 
-	"github.com/google/uuid"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/shabohin/photo-tags/services/gateway/internal/utils"
+	"github.com/google/uuid"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/models"
 	"github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
-
-	"time"
 )
 
 // Bot represents a Telegram bot
 type Bot struct {
 	api      *tgbotapi.BotAPI
 	logger   *logging.Logger
-	minio    *storage.MinIOClient
-	rabbitmq *messaging.RabbitMQClient
+	minio    storage.MinIOInterface
+	rabbitmq messaging.RabbitMQInterface
 	cfg      *config.Config
 }
 
+// BotLogger extends the Logger with group ID
+type BotLogger struct {
+	*logging.Logger
+	groupID string
+}
+
+// GetGroupID returns the group ID of the logger
+func (l *BotLogger) GetGroupID() string {
+	return l.groupID
+}
+
+// NewBotLogger creates a new bot logger
+func NewBotLogger(logger *logging.Logger, groupID string) *BotLogger {
+	return &BotLogger{
+		Logger:  logger,
+		groupID: groupID,
+	}
+}
+
 // NewBot creates a new Telegram bot
-func NewBot(cfg *config.Config, logger *logging.Logger, minio *storage.MinIOClient, rabbitmq *messaging.RabbitMQClient) (*Bot, error) {
+func NewBot(cfg *config.Config, logger *logging.Logger, minio storage.MinIOInterface, rabbitmq messaging.RabbitMQInterface) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Telegram bot: %w", err)
@@ -46,7 +66,7 @@ func NewBot(cfg *config.Config, logger *logging.Logger, minio *storage.MinIOClie
 
 // Start starts listening for updates
 func (b *Bot) Start(ctx context.Context) error {
- Ensure MinIO buckets exist
+	// Ensure MinIO buckets exist
 	if err := b.minio.EnsureBucketExists(ctx, storage.BucketOriginal); err != nil {
 		return fmt.Errorf("failed to create original bucket: %w", err)
 	}
@@ -89,13 +109,15 @@ func (b *Bot) Start(ctx context.Context) error {
 
 // handleUpdate handles a single update
 func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
-	log := b.logger.WithTraceID(uuid.New().String())
+	traceID := uuid.New().String()
+	log := b.logger.WithTraceID(traceID)
 
 	// Check if message contains photos or documents
 	if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
 		// Handle photo
-		log = log.WithGroupID(uuid.New().String())
-		log.Info("Received photo", update.Message.From.UserName)
+		groupID := uuid.New().String()
+		botLog := NewBotLogger(log.WithGroupID(groupID), groupID)
+		botLog.Info("Received photo", update.Message.From.UserName)
 
 		// Get the largest photo size
 		photoSize := update.Message.Photo[len(update.Message.Photo)-1]
@@ -104,14 +126,14 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		// Get file URL
 		fileURL, err := b.api.GetFileDirectURL(fileID)
 		if err != nil {
-			log.Error("Failed to get file URL", err)
+			botLog.Error("Failed to get file URL", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to get file URL")
 			return
 		}
 
 		// Process photo
-		if err := b.processMedia(ctx, log, update.Message, fileID, "photo.jpg", fileURL); err != nil {
-			log.Error("Failed to process photo", err)
+		if err := b.processMedia(ctx, botLog, update.Message, fileID, "photo.jpg", fileURL); err != nil {
+			botLog.Error("Failed to process photo", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process photo")
 			return
 		}
@@ -129,20 +151,21 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 			return
 		}
 
-		log = log.WithGroupID(uuid.New().String())
-		log.Info("Received document", fileName)
+		groupID := uuid.New().String()
+		botLog := NewBotLogger(log.WithGroupID(groupID), groupID)
+		botLog.Info("Received document", fileName)
 
 		// Get file URL
 		fileURL, err := b.api.GetFileDirectURL(fileID)
 		if err != nil {
-			log.Error("Failed to get file URL", err)
+			botLog.Error("Failed to get file URL", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to get file URL")
 			return
 		}
 
 		// Process document
-		if err := b.processMedia(ctx, log, update.Message, fileID, fileName, fileURL); err != nil {
-			log.Error("Failed to process document", err)
+		if err := b.processMedia(ctx, botLog, update.Message, fileID, fileName, fileURL); err != nil {
+			botLog.Error("Failed to process document", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process document")
 			return
 		}
@@ -153,13 +176,13 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 // processMedia processes media files (photos and documents)
-func (b *Bot) processMedia(ctx context.Context, log *logging.Logger, message *tgbotapi.Message, fileID, fileName, fileURL string) error {
+func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotapi.Message, fileID, fileName, fileURL string) error {
 	// Download file
-	fileResp, err := tgbotapi.Get(b.api.Client, fileURL)
+	resp, err := http.Get(fileURL)
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
 	}
-	defer fileResp.Body.Close()
+	defer resp.Body.Close()
 
 	// Determine content type
 	contentType := mime.TypeByExtension(filepath.Ext(fileName))
@@ -169,13 +192,11 @@ func (b *Bot) processMedia(ctx context.Context, log *logging.Logger, message *tg
 
 	// Generate trace ID
 	traceID := uuid.New().String()
-	log = log.WithTraceID(traceID)
-
-	// Generate MinIO path
-	minioPath := fmt.Sprintf("%s/%s/%s", storage.BucketOriginal, traceID, fileName)
+	log = NewBotLogger(log.Logger.WithTraceID(traceID), log.GetGroupID())
 
 	// Upload file to MinIO
-	if err := b.minio.UploadFile(ctx, storage.BucketOriginal, fmt.Sprintf("%s/%s", traceID, fileName), fileResp.Body, contentType); err != nil {
+	minioObjectPath := fmt.Sprintf("%s/%s", traceID, fileName)
+	if err := b.minio.UploadFile(ctx, storage.BucketOriginal, minioObjectPath, resp.Body, contentType); err != nil {
 		return fmt.Errorf("failed to upload file to MinIO: %w", err)
 	}
 
@@ -189,7 +210,7 @@ func (b *Bot) processMedia(ctx context.Context, log *logging.Logger, message *tg
 		TelegramID:       message.From.ID,
 		TelegramUsername: message.From.UserName,
 		OriginalFilename: fileName,
-		OriginalPath:     fmt.Sprintf("%s/%s", traceID, fileName),
+		OriginalPath:     minioObjectPath,
 		Timestamp:        time.Now(),
 	}
 
@@ -210,8 +231,8 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 
-	log := b.logger.WithTraceID(message.TraceID).WithGroupID(message.GroupID)
-	log.Info("Received processed image", message)
+	botLog := NewBotLogger(b.logger.WithTraceID(message.TraceID).WithGroupID(message.GroupID), message.GroupID)
+	botLog.Info("Received processed image", message)
 
 	// Check if processing failed
 	if message.Status == "failed" {
@@ -223,7 +244,7 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 	ctx := context.Background()
 	obj, err := b.minio.DownloadFile(ctx, storage.BucketProcessed, message.ProcessedPath)
 	if err != nil {
-		log.Error("Failed to download file from MinIO", err)
+		botLog.Error("Failed to download file from MinIO", err)
 		b.sendErrorMessage(message.TelegramID, "Failed to download processed image")
 		return err
 	}
@@ -232,7 +253,7 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 	// Read file contents
 	fileBytes, err := io.ReadAll(obj)
 	if err != nil {
-		log.Error("Failed to read file contents", err)
+		botLog.Error("Failed to read file contents", err)
 		b.sendErrorMessage(message.TelegramID, "Failed to read processed image")
 		return err
 	}
@@ -242,16 +263,16 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 		Name:  message.OriginalFilename,
 		Bytes: fileBytes,
 	}
-	msg := tgbotapi.NewDocument(message.TelegramID, fileBytes)
+	msg := tgbotapi.NewDocument(message.TelegramID, fileBytesObj)
 	msg.Caption = "✅ Image processed with AI-generated metadata"
 
 	if _, err := b.api.Send(msg); err != nil {
-		log.Error("Failed to send image", err)
+		botLog.Error("Failed to send image", err)
 		b.sendErrorMessage(message.TelegramID, "Failed to send processed image")
 		return err
 	}
 
-	log.Info("Processed image sent", nil)
+	botLog.Info("Processed image sent", nil)
 	return nil
 }
 
@@ -285,4 +306,9 @@ func (b *Bot) sendMessage(chatID int64, text string) {
 // sendErrorMessage sends an error message
 func (b *Bot) sendErrorMessage(chatID int64, text string) {
 	b.sendMessage(chatID, "❌ "+text)
+}
+
+// GetUsername returns the username of the bot
+func (b *Bot) GetUsername() string {
+	return b.api.Self.UserName
 }

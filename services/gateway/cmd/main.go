@@ -92,7 +92,7 @@ func main() {
 }
 
 // initializeDependencies initializes MinIO and RabbitMQ clients
-func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (*storage.MinIOClient, *messaging.RabbitMQClient, error) {
+func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
 	// Initialize MinIO client
 	logger.Info("Initializing MinIO client", map[string]interface{}{
 		"endpoint": cfg.MinIOEndpoint,

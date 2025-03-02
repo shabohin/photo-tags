@@ -54,6 +54,16 @@ func (l *Logger) WithGroupID(groupID string) *Logger {
 	}
 }
 
+// GetTraceID returns the trace ID
+func (l *Logger) GetTraceID() string {
+	return l.traceID
+}
+
+// GetGroupID returns the group ID
+func (l *Logger) GetGroupID() string {
+	return l.groupID
+}
+
 // Info logs an info message
 func (l *Logger) Info(msg string, additional interface{}) {
 	l.log("INFO", msg, additional)
