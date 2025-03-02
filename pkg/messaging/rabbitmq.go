@@ -7,6 +7,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// RabbitMQInterface defines the interface for RabbitMQ operations
+type RabbitMQInterface interface {
+	DeclareQueue(name string) (interface{}, error)
+	PublishMessage(queueName string, message interface{}) error
+	ConsumeMessages(queueName string, handler func([]byte) error) error
+	Close()
+}
+
 // RabbitMQ queues
 const (
 	QueueImageUpload       = "image_upload"
@@ -53,7 +61,7 @@ func (c *RabbitMQClient) Close() {
 }
 
 // DeclareQueue declares a queue with the given name
-func (c *RabbitMQClient) DeclareQueue(name string) (amqp.Queue, error) {
+func (c *RabbitMQClient) DeclareQueue(name string) (interface{}, error) {
 	return c.channel.QueueDeclare(
 		name,  // queue name
 		true,  // durable

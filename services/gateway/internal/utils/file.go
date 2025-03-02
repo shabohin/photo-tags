@@ -20,6 +20,11 @@ var (
 func ValidateFileFormat(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 
+	// Check if file has no name (just extension)
+	if filename == ext {
+		return ErrUnsupportedFormat
+	}
+
 	// Check if format is supported
 	if !constants.SupportedFormats[ext] {
 		return ErrUnsupportedFormat

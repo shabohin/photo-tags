@@ -59,6 +59,64 @@
                     }
                 ]
             }
+        },
+        {
+            "label": "Fix Dependencies",
+            "type": "shell",
+            "command": "./scripts/fix-deps.sh",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "Setup Environment",
+            "type": "shell",
+            "command": "./scripts/setup.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Services",
+            "type": "shell",
+            "command": "./scripts/build.sh",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Start Services",
+            "type": "shell",
+            "command": "./scripts/start.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Stop Services",
+            "type": "shell",
+            "command": "./scripts/stop.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
         }
     ]
 }

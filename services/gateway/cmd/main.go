@@ -18,6 +18,9 @@ import (
 )
 
 func main() {
+	fmt.Println("Starting Gateway Service...")
+	log.Println("Gateway Service is up and running")
+
 	// Create context that will be canceled on SIGINT or SIGTERM
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,7 +78,8 @@ func main() {
 		logger.Info("Telegram token not provided, bot will not be started", nil)
 	}
 
-	// Wait for context cancellation
+	// Block until context is canceled
+	logger.Info("Gateway service running. Press Ctrl+C to stop.", nil)
 	<-ctx.Done()
 	logger.Info("Shutting down Gateway Service", nil)
 
@@ -92,7 +96,7 @@ func main() {
 }
 
 // initializeDependencies initializes MinIO and RabbitMQ clients
-func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (*storage.MinIOClient, *messaging.RabbitMQClient, error) {
+func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
 	// Initialize MinIO client
 	logger.Info("Initializing MinIO client", map[string]interface{}{
 		"endpoint": cfg.MinIOEndpoint,

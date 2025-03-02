@@ -9,6 +9,14 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+// MinIOInterface defines the interface for MinIO operations
+type MinIOInterface interface {
+	EnsureBucketExists(ctx context.Context, bucketName string) error
+	UploadFile(ctx context.Context, bucketName, objectName string, reader io.Reader, contentType string) error
+	DownloadFile(ctx context.Context, bucketName, objectName string) (*minio.Object, error)
+	GetPresignedURL(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error)
+}
+
 // MinIOClient handles object storage operations
 type MinIOClient struct {
 	client *minio.Client
