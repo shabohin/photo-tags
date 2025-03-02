@@ -1,0 +1,64 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run All Checks",
+            "type": "shell",
+            "command": "./scripts/check.sh",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "./scripts/test.sh",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": {
+                "owner": "go-test",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": [
+                    {
+                        "regexp": "^\\s+(.+):(\\d+):\\s+(.+)$",
+                        "file": 1,
+                        "line": 2,
+                        "message": 3
+                    }
+                ]
+            }
+        },
+        {
+            "label": "Run Linting",
+            "type": "shell",
+            "command": "./scripts/lint.sh",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": {
+                "owner": "golangci-lint",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": [
+                    {
+                        "regexp": "^(.+):(\\d+):(\\d+):\\s+(.+)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "message": 4
+                    }
+                ]
+            }
+        }
+    ]
+}

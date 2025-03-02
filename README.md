@@ -78,3 +78,24 @@ After launch, the bot will be accessible through Telegram. Send an image to the 
 3. Open a Pull Request to `main`
 4. Discuss and refine changes if necessary
 5. After passing tests and review, merge changes into `main`
+
+## Development Commands
+
+### Testing
+To run tests for all modules:
+```bash
+./scripts/test.sh
+```
+
+### Linting
+To run linters for all modules:
+```bash
+./scripts/lint.sh
+```
+
+### All Checks
+To run both tests and linting checks:
+```bash
+./scripts/check.sh
+```
+These commands will check each module separately and provide a summary of results.
