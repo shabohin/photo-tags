@@ -48,6 +48,7 @@ services:
         depends_on:
             - rabbitmq
             - minio
+        env_file: .env
         environment:
             - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
             - MINIO_ENDPOINT=minio:9000
