@@ -1,0 +1,86 @@
+package logging
+
+import (
+	"encoding/json"
+	"log"
+	"os"
+	"time"
+)
+
+// Logger handles structured logging
+type Logger struct {
+	service string
+	traceID string
+	groupID string
+	stdLog  *log.Logger
+}
+
+// LogEntry represents a structured log entry
+type LogEntry struct {
+	Timestamp  string      `json:"timestamp"`
+	Level      string      `json:"level"`
+	Service    string      `json:"service"`
+	TraceID    string      `json:"trace_id,omitempty"`
+	GroupID    string      `json:"group_id,omitempty"`
+	Message    string      `json:"message"`
+	Additional interface{} `json:"additional,omitempty"`
+}
+
+// NewLogger creates a new logger for a service
+func NewLogger(service string) *Logger {
+	return &Logger{
+		service: service,
+		stdLog:  log.New(os.Stdout, "", 0),
+	}
+}
+
+// WithTraceID adds trace ID to the logger
+func (l *Logger) WithTraceID(traceID string) *Logger {
+	return &Logger{
+		service: l.service,
+		traceID: traceID,
+		groupID: l.groupID,
+		stdLog:  l.stdLog,
+	}
+}
+
+// WithGroupID adds group ID to the logger
+func (l *Logger) WithGroupID(groupID string) *Logger {
+	return &Logger{
+		service: l.service,
+		traceID: l.traceID,
+		groupID: groupID,
+		stdLog:  l.stdLog,
+	}
+}
+
+// Info logs an info message
+func (l *Logger) Info(msg string, additional interface{}) {
+	l.log("INFO", msg, additional)
+}
+
+// Error logs an error message
+func (l *Logger) Error(msg string, additional interface{}) {
+	l.log("ERROR", msg, additional)
+}
+
+// log handles the actual logging
+func (l *Logger) log(level, msg string, additional interface{}) {
+	entry := LogEntry{
+		Timestamp:  time.Now().Format(time.RFC3339),
+		Level:      level,
+		Service:    l.service,
+		TraceID:    l.traceID,
+		GroupID:    l.groupID,
+		Message:    msg,
+		Additional: additional,
+	}
+
+	entryJSON, err := json.Marshal(entry)
+	if err != nil {
+		l.stdLog.Printf("Error marshaling log entry: %v", err)
+		return
+	}
+
+	l.stdLog.Println(string(entryJSON))
+}

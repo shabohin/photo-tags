@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+    rabbitmq:
+        container_name: rabbitmq
+        image: rabbitmq:3-management-alpine
+        ports:
+            - '5672:5672'
+            - '15672:15672'
+        environment:
+            - RABBITMQ_DEFAULT_USER=user
+            - RABBITMQ_DEFAULT_PASS=password
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+        healthcheck:
+            test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    minio:
+        container_name: minio
+        image: minio/minio
+        ports:
+            - '9000:9000'
+            - '9001:9001'
+        environment:
+            MINIO_ROOT_USER: minioadmin
+            MINIO_ROOT_PASSWORD: minioadmin
+        volumes:
+            - minio_data:/data
+        command: server /data --console-address ":9001"
+        healthcheck:
+            test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    gateway:
+        container_name: gateway
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile.service
+            args:
+                SERVICE: gateway
+        ports:
+            - '8080:8080'
+        depends_on:
+            - rabbitmq
+            - minio
+        environment:
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - MINIO_ENDPOINT=minio:9000
+            - MINIO_ACCESS_KEY=minioadmin
+            - MINIO_SECRET_KEY=minioadmin
+
+    analyzer:
+        container_name: analyzer
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile.service
+            args:
+                SERVICE: analyzer
+        depends_on:
+            - rabbitmq
+            - minio
+        environment:
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - MINIO_ENDPOINT=minio:9000
+            - MINIO_ACCESS_KEY=minioadmin
+            - MINIO_SECRET_KEY=minioadmin
+            - OPENAI_API_KEY=${OPENAI_API_KEY}
+        # env_file: ${ENV_FILE}
+
+    processor:
+        container_name: processor
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile.service
+            args:
+                SERVICE: processor
+        depends_on:
+            - rabbitmq
+            - minio
+        environment:
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - MINIO_ENDPOINT=minio:9000
+            - MINIO_ACCESS_KEY=minioadmin
+            - MINIO_SECRET_KEY=minioadmin
+
+volumes:
+    rabbitmq_data:
+    minio_data:

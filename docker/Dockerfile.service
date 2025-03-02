@@ -1,0 +1,29 @@
+# Multi-stage build for optimizing image size
+FROM golang:1.24-alpine AS builder
+
+ARG SERVICE
+WORKDIR /app
+
+# Copy go.mod files
+COPY ./services/$SERVICE/go.mod .
+COPY ./pkg/go.mod /pkg/go.mod
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY ./services/$SERVICE/ .
+COPY ./pkg/ /pkg/
+
+# Build binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./cmd/
+
+# Final image
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+COPY --from=builder /bin/service /app/service
+
+# Run service
+CMD ["/app/service"]
