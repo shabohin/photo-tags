@@ -83,6 +83,20 @@
             "problemMatcher": []
         },
         {
+            "label": "Build Services",
+            "type": "shell",
+            "command": "./scripts/build.sh",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Start Services",
             "type": "shell",
             "command": "./scripts/start.sh",
