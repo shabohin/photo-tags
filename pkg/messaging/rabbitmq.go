@@ -110,9 +110,13 @@ func (c *RabbitMQClient) ConsumeMessages(queueName string, handler func([]byte) 
 			err := handler(msg.Body)
 			if err != nil {
 				log.Printf("Error processing message: %v", err)
-				msg.Nack(false, true) // negative acknowledgement, requeue
+				if nackErr := msg.Nack(false, true); nackErr != nil {
+					log.Printf("Error sending NACK: %v", nackErr)
+				}
 			} else {
-				msg.Ack(false) // acknowledge
+				if ackErr := msg.Ack(false); ackErr != nil {
+					log.Printf("Error sending ACK: %v", ackErr)
+				}
 			}
 		}
 	}()
