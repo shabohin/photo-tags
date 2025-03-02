@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -28,8 +29,17 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-go-
 
-            - name: Test
-              run: go test -race -p 4 ./...
+            - name: Test Gateway
+              run: cd services/gateway && go test -race -p 4 ./...
+
+            - name: Test Analyzer
+              run: cd services/analyzer && go test -race -p 4 ./...
+
+            - name: Test Processor
+              run: cd services/processor && go test -race -p 4 ./...
+
+            - name: Test Shared Packages
+              run: cd pkg && go test -race -p 4 ./...
 
     lint:
         runs-on: ubuntu-latest
@@ -41,9 +51,34 @@ jobs:
               with:
                   go-version: '1.21'
 
-            - name: Lint
+            - name: Lint Gateway
               uses: golangci/golangci-lint-action@v3
               with:
                   version: latest
                   args: --timeout=5m
                   skip-cache: false
+                  working-directory: services/gateway
+
+            - name: Lint Analyzer
+              uses: golangci/golangci-lint-action@v3
+              with:
+                  version: latest
+                  args: --timeout=5m
+                  skip-cache: false
+                  working-directory: services/analyzer
+
+            - name: Lint Processor
+              uses: golangci/golangci-lint-action@v3
+              with:
+                  version: latest
+                  args: --timeout=5m
+                  skip-cache: false
+                  working-directory: services/processor
+
+            - name: Lint Shared Packages
+              uses: golangci/golangci-lint-action@v3
+              with:
+                  version: latest
+                  args: --timeout=5m
+                  skip-cache: false
+                  working-directory: pkg
