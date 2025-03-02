@@ -30,10 +30,10 @@ The project is built using a microservice architecture and includes the followin
     git clone https://github.com/shabohin/photo-tags.git
     cd photo-tags
     ```
-2.  Export your OpenAI API key:
+2.  Export your OpenAI API key in docker/env:
 
     ```bash
-    export OPENAI_API_KEY=your-api-key
+    OPENAI_API_KEY=your-api-key
     ```
 
 3.  Start the services:

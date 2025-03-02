@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
     rabbitmq:
+        container_name: rabbitmq
         image: rabbitmq:3-management-alpine
         ports:
             - '5672:5672'
@@ -18,6 +19,7 @@ services:
             retries: 5
 
     minio:
+        container_name: minio
         image: minio/minio
         ports:
             - '9000:9000'
@@ -35,6 +37,7 @@ services:
             retries: 5
 
     gateway:
+        container_name: gateway
         build:
             context: ..
             dockerfile: docker/Dockerfile.service
@@ -52,6 +55,7 @@ services:
             - MINIO_SECRET_KEY=minioadmin
 
     analyzer:
+        container_name: analyzer
         build:
             context: ..
             dockerfile: docker/Dockerfile.service
@@ -66,8 +70,10 @@ services:
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
             - OPENAI_API_KEY=${OPENAI_API_KEY}
+        # env_file: ${ENV_FILE}
 
     processor:
+        container_name: processor
         build:
             context: ..
             dockerfile: docker/Dockerfile.service

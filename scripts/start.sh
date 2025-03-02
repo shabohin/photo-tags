@@ -12,10 +12,10 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# Check for OPENAI_API_KEY environment variable
-if [ -z "$OPENAI_API_KEY" ]; then
-    echo "OPENAI_API_KEY is not set. Please set your OpenAI API key."
-    echo "Example: export OPENAI_API_KEY=your-api-key"
+# Check for .env file
+if [ ! -f "$(dirname "$0")/docker/.env" ]; then
+    echo ".env file not found. Please create a .env file with OPENAI_API_KEY."
+    echo "Example: echo 'OPENAI_API_KEY=your-api-key' > docker/.env"
     exit 1
 fi
 
