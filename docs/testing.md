@@ -95,7 +95,7 @@ func TestRabbitMQMessaging_SendReceive(t *testing.T) {
 -   RabbitMQ message publishing and consumption
 -   MinIO file upload and download
 -   Telegram API interactions
--   OpenAI API interactions
+-   OpenRouter API interactions
 -   ExifTool integration
 
 ### 3. End-to-End Tests
@@ -230,7 +230,7 @@ Tests in the CI/CD pipeline verify code quality before integration:
 ### Mock Services
 
 -   Mock Telegram API for simulating user interactions
--   Mock OpenAI API for deterministic responses
+-   Mock OpenRouter API for deterministic responses
 -   MockMinio for storage testing without external dependencies
 
 ## Testing Best Practices
@@ -265,23 +265,23 @@ Use interface-based mocking for external dependencies:
 
 ```go
 // Define interface
-type OpenAIClient interface {
+type OpenRouterClient interface {
     GenerateMetadata(image []byte) (*models.Metadata, error)
 }
 
 // Real implementation
-type RealOpenAIClient struct {
+type RealOpenRouterClient struct {
     apiKey string
 }
 
 // Mock implementation for testing
-type MockOpenAIClient struct {
+type MockOpenRouterClient struct {
     mock.Mock
 }
-
-func (m *MockOpenAIClient) GenerateMetadata(image []byte) (*models.Metadata, error) {
+func (m *MockOpenRouterClient) GenerateMetadata(image []byte) (*models.Metadata, error) {
     args := m.Called(image)
     return args.Get(0).(*models.Metadata), args.Error(1)
+}
 }
 ```
 
@@ -330,7 +330,7 @@ func (s *InMemoryStorage) DownloadFile(path string) ([]byte, error) {
 
 ### AI Integration Testing
 
--   Mock OpenAI API responses
+-   Mock OpenRouter API responses
 -   Use deterministic responses for consistent testing
 -   Test with various image types
 

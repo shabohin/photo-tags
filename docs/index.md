@@ -12,11 +12,11 @@ Welcome to the Photo Tags Service documentation. This index provides an overview
 
 ## Project Overview
 
-Photo Tags Service is an automated image processing service that uses AI to generate metadata for images. The service adds titles, descriptions, and keywords to image metadata using OpenAI's GPT-4o. Users interact with the service through a Telegram bot, sending images and receiving processed versions with embedded metadata.
+Photo Tags Service is an automated image processing service that uses AI to generate metadata for images. The service adds titles, descriptions, and keywords to image metadata using OpenRouter's GPT-4o. Users interact with the service through a Telegram bot, sending images and receiving processed versions with embedded metadata.
 
 ## Key Features
 
--   **Automatic Metadata Generation**: Uses GPT-4o to analyze images and generate appropriate metadata
+-   **Automatic Metadata Generation**: Uses GPT-4o via OpenRouter to analyze images and generate appropriate metadata
 -   **Metadata Embedding**: Writes metadata directly into image files (EXIF, IPTC, XMP)
 -   **Simple User Interface**: Easy interaction through a Telegram bot
 -   **Microservice Architecture**: Modular design for scalability and maintainability
@@ -27,7 +27,7 @@ Photo Tags Service is an automated image processing service that uses AI to gene
 The system consists of three main services:
 
 1. **Gateway Service** - Handles user interactions via Telegram
-2. **Analyzer Service** - Processes images with GPT-4o to generate metadata
+2. **Analyzer Service** - Processes images with GPT-4o via OpenRouter to generate metadata
 3. **Processor Service** - Embeds metadata into image files
 
 These services communicate asynchronously through RabbitMQ message queues, and images are stored in MinIO object storage.

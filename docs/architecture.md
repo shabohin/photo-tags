@@ -86,14 +86,14 @@ The Analyzer Service processes images with AI to generate appropriate metadata.
 
 -   Consume tasks from the `image_upload` queue
 -   Download images from MinIO
--   Interact with OpenAI's GPT-4o to analyze images
+-   Interact with OpenRouter's GPT-4o to analyze images
 -   Generate metadata (title, description, keywords)
 -   Publish results to the `metadata_generated` queue
 
 **Technologies:**
 
 -   Go
--   OpenAI API
+-   OpenRouter API
 -   MinIO SDK
 -   RabbitMQ client
 
@@ -217,7 +217,7 @@ Object storage for all images.
 
     - Analyzer Service consumes message from 'image_upload' queue
     - Analyzer downloads image from MinIO
-    - Analyzer sends image to GPT-4o for analysis
+      | - Analyzer sends image to GPT-4o via OpenRouter for analysis
     - Analyzer receives metadata (title, description, keywords)
     - Analyzer publishes metadata to 'metadata_generated' queue
 

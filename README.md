@@ -11,7 +11,7 @@ This service automatically adds titles, descriptions, and keywords to image meta
 The project is built using a microservice architecture and includes the following components:
 
 -   **Gateway Service** - receives images and sends results via Telegram API
--   **Analyzer Service** - generates metadata using GPT-4o
+-   **Analyzer Service** - generates metadata using GPT-4o via OpenRouter
 -   **Processor Service** - writes metadata to images
 -   **RabbitMQ** - message exchange between services
 -   **MinIO** - image storage
@@ -64,7 +64,7 @@ For detailed information about development workflows and testing strategies, see
 
 -   Docker and Docker Compose
 -   Telegram bot token (get from [@BotFather](https://t.me/BotFather))
--   OpenAI API key for GPT-4o access
+-   OpenRouter API key for GPT-4o access
 
 ### Starting the Project
 
@@ -84,8 +84,8 @@ For detailed information about development workflows and testing strategies, see
 
 3. On first run, you'll be prompted to edit the `.env` file and provide:
 
-    - `TELEGRAM_TOKEN` - your Telegram bot token
-    - `OPENAI_API_KEY` - your OpenAI API key
+    | - `TELEGRAM_TOKEN` - your Telegram bot token
+    | - `OPENROUTER_API_KEY` - your OpenRouter API key
 
 4. The script launches services in Docker and checks all dependencies
 

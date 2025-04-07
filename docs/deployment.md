@@ -41,7 +41,7 @@ The Photo Tags Service can be deployed in several ways:
 -   Docker and Docker Compose installed
 -   Git
 -   Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
--   OpenAI API Key with GPT-4o Vision access
+-   OpenRouter API Key with GPT-4o Vision access
 
 ### Deployment Steps
 
@@ -333,7 +333,7 @@ For production environments, consider these additional steps:
     - Ensure internet connectivity
 
 5. **Image Processing Failures**
-    - Check OpenAI API key validity
+    - Check OpenRouter API key validity
     - Look for ExifTool errors in Processor logs
     - Verify image formats are supported
 
