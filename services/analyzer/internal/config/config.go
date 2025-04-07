@@ -26,6 +26,8 @@ type Config struct {
 		UseSSL          bool
 		OriginalBucket  string
 		DownloadTimeout time.Duration
+		ConnectAttempts int
+		ConnectDelay    time.Duration
 	}
 
 	OpenRouter struct {
@@ -66,6 +68,8 @@ func New() *Config {
 	cfg.MinIO.UseSSL = getEnvAsBool("MINIO_USE_SSL", false)
 	cfg.MinIO.OriginalBucket = getEnv("MINIO_ORIGINAL_BUCKET", pkgstorage.BucketOriginal)
 	cfg.MinIO.DownloadTimeout = getEnvAsDuration("MINIO_DOWNLOAD_TIMEOUT", 30*time.Second)
+	cfg.MinIO.ConnectAttempts = getEnvAsInt("MINIO_CONNECT_ATTEMPTS", 5)
+	cfg.MinIO.ConnectDelay = getEnvAsDuration("MINIO_CONNECT_DELAY", 3*time.Second)
 
 	// OpenRouter Config
 	cfg.OpenRouter.APIKey = getEnv("OPENROUTER_API_KEY", "")

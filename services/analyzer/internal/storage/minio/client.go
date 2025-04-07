@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -17,37 +18,47 @@ type Client struct {
 	logger         *logrus.Logger
 }
 
-func NewClient(endpoint, accessKey, secretKey string, useSSL bool, originalBucket string, logger *logrus.Logger) (*Client, error) {
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
-	})
-	if err != nil {
-		logger.WithError(err).Error("Failed to create MinIO client")
-		return nil, err
-	}
+func NewClient(endpoint, accessKey, secretKey string, useSSL bool, originalBucket string, logger *logrus.Logger, attempts int, delay time.Duration) (*Client, error) {
+	var client *minio.Client
+	var err error
 
-	// Check if the bucket exists, if not create it
-	exists, err := client.BucketExists(context.Background(), originalBucket)
-	if err != nil {
-		logger.WithError(err).Error("Failed to check if bucket exists")
-		return nil, err
-	}
-
-	if !exists {
-		err = client.MakeBucket(context.Background(), originalBucket, minio.MakeBucketOptions{})
+	for i := 1; i <= attempts; i++ {
+		client, err = minio.New(endpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+			Secure: useSSL,
+		})
 		if err != nil {
-			logger.WithError(err).Error("Failed to create bucket")
-			return nil, err
+			logger.WithError(err).Errorf("Attempt %d: Failed to create MinIO client", i)
+			time.Sleep(delay)
+			continue
 		}
-		logger.WithField("bucket", originalBucket).Info("Bucket created successfully")
+
+		exists, errBucket := client.BucketExists(context.Background(), originalBucket)
+		if errBucket != nil {
+			logger.WithError(errBucket).Errorf("Attempt %d: Failed to check if bucket exists", i)
+			time.Sleep(delay)
+			continue
+		}
+
+		if !exists {
+			errBucket = client.MakeBucket(context.Background(), originalBucket, minio.MakeBucketOptions{})
+			if errBucket != nil {
+				logger.WithError(errBucket).Errorf("Attempt %d: Failed to create bucket", i)
+				time.Sleep(delay)
+				continue
+			}
+			logger.WithField("bucket", originalBucket).Info("Bucket created successfully")
+		}
+
+		return &Client{
+			client:         client,
+			originalBucket: originalBucket,
+			logger:         logger,
+		}, nil
 	}
 
-	return &Client{
-		client:         client,
-		originalBucket: originalBucket,
-		logger:         logger,
-	}, nil
+	logger.WithError(err).Errorf("All %d attempts to connect to MinIO failed", attempts)
+	return nil, err
 }
 
 func (c *Client) DownloadImage(ctx context.Context, path string) ([]byte, error) {
