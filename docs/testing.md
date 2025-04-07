@@ -133,7 +133,9 @@ func TestImageProcessingWorkflow(t *testing.T) {
     assert.NoError(t, err)
     assert.NotEmpty(t, metadata.Title)
     assert.NotEmpty(t, metadata.Description)
-    assert.Len(t, metadata.Keywords, 49)
+    // Verify the number of keywords matches the expected count (49 in this case)
+    const expectedKeywordCount = 49
+    assert.Len(t, metadata.Keywords, expectedKeywordCount)
 }
 ```
 

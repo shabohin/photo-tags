@@ -19,7 +19,7 @@ Photo Tags Service uses a microservices architecture to process images and add m
                          +---------------------+
                          |                     |
                          |    Gateway Service  |
-                         | (priem and sending) |
+                         | (receiving and sending) |
                          |                     |
                          +----------+----------+
                                     |

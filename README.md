@@ -15,7 +15,6 @@ The project is built using a microservice architecture and includes the followin
 -   **Processor Service** - writes metadata to images
 -   **RabbitMQ** - message exchange between services
 -   **MinIO** - image storage
-    For more detailed architecture information, see [Architecture Documentation](docs/architecture.md).
 
 For all project documentation, see the [Documentation Index](docs/index.md).
 For more detailed architecture information, see [Architecture Documentation](docs/architecture.md).
