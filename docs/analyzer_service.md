@@ -229,7 +229,7 @@ All configuration is environment-variable driven. Defaults are provided in code 
 | `MINIO_ACCESS_KEY`            | MinIO access key              | `minioadmin`                        |
 | `MINIO_SECRET_KEY`            | MinIO secret key              | `minioadmin`                        |
 | `MINIO_USE_SSL`               | Use SSL for MinIO             | `false`                             |
-| `MINIO_ORIGINAL_BUCKET`       | Bucket name                   | `originals`                         |
+| `MINIO_ORIGINAL_BUCKET`       | Bucket name                   | `original`                          |
 | `MINIO_DOWNLOAD_TIMEOUT`      | Download timeout              | `30s`                               |
 | `OPENROUTER_API_KEY`          | OpenRouter API key            | (none)                              |
 | `OPENROUTER_MODEL`            | Model name                    | `openai/gpt-4o`                     |

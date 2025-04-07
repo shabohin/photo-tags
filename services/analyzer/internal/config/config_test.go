@@ -59,7 +59,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, "minioadmin", cfg.MinIO.AccessKey)
 	assert.Equal(t, "minioadmin", cfg.MinIO.SecretKey)
 	assert.Equal(t, false, cfg.MinIO.UseSSL)
-	assert.Equal(t, "originals", cfg.MinIO.OriginalBucket)
+	assert.Equal(t, "original", cfg.MinIO.OriginalBucket)
 	assert.Equal(t, 30*time.Second, cfg.MinIO.DownloadTimeout)
 
 	assert.Equal(t, "", cfg.OpenRouter.APIKey)

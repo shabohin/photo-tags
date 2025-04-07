@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	pkgstorage "github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -63,7 +64,7 @@ func New() *Config {
 	cfg.MinIO.AccessKey = getEnv("MINIO_ACCESS_KEY", "minioadmin")
 	cfg.MinIO.SecretKey = getEnv("MINIO_SECRET_KEY", "minioadmin")
 	cfg.MinIO.UseSSL = getEnvAsBool("MINIO_USE_SSL", false)
-	cfg.MinIO.OriginalBucket = getEnv("MINIO_ORIGINAL_BUCKET", "originals")
+	cfg.MinIO.OriginalBucket = getEnv("MINIO_ORIGINAL_BUCKET", pkgstorage.BucketOriginal)
 	cfg.MinIO.DownloadTimeout = getEnvAsDuration("MINIO_DOWNLOAD_TIMEOUT", 30*time.Second)
 
 	// OpenRouter Config

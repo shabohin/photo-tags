@@ -5,7 +5,22 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
+
+func InitLogger(format string, level logrus.Level) *logrus.Logger {
+	logger := logrus.New()
+	logger.SetLevel(level)
+
+	if format == "json" {
+		logger.SetFormatter(&logrus.JSONFormatter{})
+	} else {
+		logger.SetFormatter(&logrus.TextFormatter{})
+	}
+
+	return logger
+}
 
 // Logger handles structured logging
 type Logger struct {
