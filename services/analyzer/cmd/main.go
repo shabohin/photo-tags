@@ -1,11 +1,27 @@
 package main
 
 import (
-	"fmt"
-	"log"
+"log"
+"os"
+
+"github.com/shabohin/photo-tags/services/analyzer/internal/app"
+"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 )
 
 func main() {
-	fmt.Println("Starting Analyzer Service...")
-	log.Println("Analyzer Service is up and running")
+// Load configuration
+cfg := config.New()
+
+// Initialize application
+application, err := app.New(cfg)
+if err != nil {
+log.Fatalf("Failed to initialize application: %v", err)
+}
+
+// Start the application
+if err := application.Start(); err != nil {
+application.Shutdown()
+log.Fatalf("Application error: %v", err)
+os.Exit(1)
+}
 }
