@@ -27,19 +27,26 @@ This document outlines development workflows, best practices, and processes for 
     cd photo-tags
     ```
 
-2. Set up VSCode for Go development:
+2. Copy and configure environment variables:
+
+    ```bash
+    cp docker/.env.example docker/.env
+    # Edit docker/.env and set your TELEGRAM_TOKEN and OPENROUTER_API_KEY
+    ```
+
+3. Set up VSCode for Go development:
 
     - Install Go extension
     - Configure Go linting and formatting
     - Set up test explorer
 
-3. Configure pre-commit hooks:
+4. Configure pre-commit hooks:
 
     ```bash
     ./scripts/setup.sh
     ```
 
-4. Start the development environment:
+5. Start the development environment:
     ```bash
     ./scripts/start.sh
     ```

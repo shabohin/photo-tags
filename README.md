@@ -74,19 +74,26 @@ For detailed information about development workflows and testing strategies, see
     cd photo-tags
     ```
 
-2. Run the `start.sh` script, which will create an `.env` file from the template:
+2. Copy the environment template and configure it:
+
+    ```bash
+    cp docker/.env.example docker/.env
+    ```
+
+3. Edit the `.env` file and provide your API keys:
+
+    ```bash
+    # Edit docker/.env and set:
+    # TELEGRAM_TOKEN - your Telegram bot token from @BotFather
+    # OPENROUTER_API_KEY - your OpenRouter API key for GPT-4o access
+    ```
+
+4. Run the `start.sh` script to launch services:
 
     ```bash
     chmod +x scripts/*.sh
     ./scripts/start.sh
     ```
-
-3. On first run, you'll be prompted to edit the `.env` file and provide:
-
-    | - `TELEGRAM_TOKEN` - your Telegram bot token
-    | - `OPENROUTER_API_KEY` - your OpenRouter API key
-
-4. The script launches services in Docker and checks all dependencies
 
 5. Run `setup.sh` to complete the initial setup:
     ```bash

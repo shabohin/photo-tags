@@ -5,6 +5,7 @@ Welcome to the Photo Tags Service documentation. This index provides an overview
 ## Core Documentation
 
 -   [Main README](../README.md) - Project overview, installation instructions, and basic usage
+-   [TODO Status](TODO.md) - Current project status and development roadmap
 -   [Architecture Documentation](architecture.md) - Detailed system architecture, components, and data flows
 -   [Development Guide](development.md) - Development workflow, coding standards, and best practices
 -   [Testing Strategy](testing.md) - Comprehensive testing approach and methodologies
