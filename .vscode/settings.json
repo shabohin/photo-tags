@@ -1,54 +1,14 @@
 {
-    "go.lintTool": "golangci-lint",
-    "go.lintFlags": [
-        "--path-mode=abs",
-        "--fast-only"
-    ],
-    "go.lintOnSave": "package",
-    "go.formatTool": "custom",
-    "go.alternateTools": {
-        "customFormatter": "golangci-lint"
-    },
-    "go.formatFlags": [
-        "fmt",
-        "--stdin"
-    ],
+    "go.lintTool": "golangci-lint-wrapper",
+    "go.lintOnSave": "workspace",
+    "go.vetOnSave": "off", 
+    "go.buildOnSave": "off",
     "go.useLanguageServer": true,
-    "go.toolsManagement.autoUpdate": true,
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit",
-        "source.fixAll": "explicit"
-    },
-    "files.eol": "\n",
-    "files.insertFinalNewline": true,
-    "files.trimFinalNewlines": true,
-    "files.trimTrailingWhitespace": true,
+    "go.formatTool": "goimports",
     "[go]": {
-        "editor.defaultFormatter": "golang.go",
-        "editor.tabSize": 4,
-        "editor.insertSpaces": false,
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit"
         }
-    },
-    "[go.mod]": {
-        "editor.defaultFormatter": "golang.go",
-        "editor.formatOnSave": true
-    },
-    "[go.sum]": {
-        "editor.defaultFormatter": "golang.go"
-    },
-    "gopls": {
-        "formatting.gofumpt": true,
-        "ui.completion.usePlaceholders": true,
-        "ui.diagnostic.analyses": {
-            "fieldalignment": false,
-            "shadow": true,
-            "unusedparams": true,
-            "unusedwrite": true
-        },
-        "ui.semanticTokens": true
     }
 }

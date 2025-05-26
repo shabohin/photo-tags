@@ -74,6 +74,19 @@
             "problemMatcher": []
         },
         {
+            "label": "Watch Linting (Gateway)",
+            "type": "shell",
+            "command": "watch",
+            "args": ["-n", "2", "cd services/gateway && golangci-lint run --out-format=json || true"],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
             "label": "Fix Dependencies",
             "type": "shell",
             "command": "make",
