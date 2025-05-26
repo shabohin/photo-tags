@@ -1,62 +1,209 @@
-version: '2'
-
+version: "2"
 run:
-    timeout: 5m
-    tests: true
-    modules-download-mode: readonly
-    go: '1.24'
-
+  tests: true
+  concurrency: 4
 linters:
-    default: standard
-    enable:
-        - misspell
-        - gosec
-    settings:
-        gosec:
-            excludes:
-            config:
-                global:
-                    nosec: true
-        errcheck:
-            check-type-assertions: true
-            check-blank: true
-
-        govet:
-            enable:
-                - shadow
-
-        revive:
-            severity: warning
-            rules:
-                - name: exported
-                  severity: warning
-
-    exclusions:
-        paths:
-            - vendor
-            - .git
-        rules:
-            # Exclude some linters from running on tests files
-            - path: '_test\.go'
-              linters:
-                  - errcheck
-        generated: disable
-
-formatters:
-    enable:
-        - gofmt
-        - goimports
-    settings:
-        gofmt:
-            simplify: true
-
-        goimports:
-            local-prefixes:
-                - github.com/shabohin/photo-tags
-
-severity:
-    default: error
+  enable:
+    # Essential linters
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    
+    # Code quality
+    - bodyclose
+    - dogsled
+    - dupl
+    - durationcheck
+    - errname
+    - goconst
+    - gocritic
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - whitespace
+    
+    # Performance optimization
+    - asasalint
+    - contextcheck
+    - nilerr
+    - noctx
+    - perfsprint
+    
+    # Style and best practices
+    - asciicheck
+    - bidichk
+    - containedctx
+    - copyloopvar
+    - exhaustive
+    - forcetypeassert
+    - funlen
+    - gochecknoinits
+    - importas
+    - interfacebloat
+    - lll
+    - nestif
+    - nilnil
+    - nonamedreturns
+    - nosprintfhostport
+    - predeclared
+    - reassign
+    - tagliatelle
+    - testableexamples
+    - usestdlibvars
+    - wastedassign
+    
+  settings:
+    dupl:
+      threshold: 100
+    funlen:
+      lines: 100
+      statements: 60
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - rangeValCopy
+        - hugeParam
+        - exitAfterDefer
+        - commentedOutCode
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    gocyclo:
+      min-complexity: 20
+    govet:
+      enable:
+        - shadow
+        - fieldalignment
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nestif:
+      min-complexity: 5
+    gosec:
+      excludes:
+        - G107
+        - G112
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: unreachable-code
+          disabled: true
+    importas:
+      no-unaliased: false
+      alias:
+        - pkg: context
+          alias: ctx
+    
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-        - linters:
-              - revive
-          severity: warning
+      # Test files exceptions
+      - linters:
+          - dupl
+          - errcheck
+          - funlen
+          - goconst
+          - gocyclo
+          - gosec
+          - bodyclose
+          - noctx
+          - forcetypeassert
+        path: _test\.go
+        
+      # Mock files exceptions  
+      - linters:
+          - dupl
+          - errcheck
+          - funlen
+          - gosec
+          - unused
+          - revive
+          - gocritic
+        path: mock.*\.go
+        
+      # Main files can be longer and more complex
+      - linters:
+          - funlen
+          - gocyclo
+          - nestif
+          - gocritic
+        path: cmd/main\.go
+        
+      # Telegram bot handlers can be complex
+      - linters:
+          - funlen
+          - gocritic
+          - gocyclo
+          - nestif
+          - gosec
+        path: internal/telegram/.*\.go
+        
+      # Config loading can have many assignments
+      - linters:
+          - funlen
+          - gocyclo
+        path: internal/config/.*\.go
+        
+      # API clients can be long
+      - linters:
+          - funlen
+          - gocyclo
+          - nestif
+        path: internal/api/.*\.go
+        
+      # App initialization can be complex
+      - linters:
+          - funlen
+          - gocyclo
+        path: internal/app/.*\.go
+        
+      # Domain services can be complex
+      - linters:
+          - funlen
+          - gocyclo
+        path: internal/domain/service/.*\.go
+        
+      # Constants files exceptions
+      - linters:
+          - gochecknoinits
+          - gocritic
+        path: internal/constants/.*\.go
+        
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
