@@ -28,7 +28,7 @@ if [ ! -f "docker/.env" ]; then
     if [ -f "docker/.env.example" ]; then
         cp docker/.env.example docker/.env
         echo -e "${YELLOW}Created .env file from example.${NC}"
-        echo -e "${RED}IMPORTANT: Please edit docker/.env to set your TELEGRAM_TOKEN and OPENAI_API_KEY!${NC}"
+        echo -e "${RED}IMPORTANT: Please edit docker/.env to set your TELEGRAM_TOKEN and OPENROUTER_API_KEY!${NC}"
         read -p "Would you like to edit the .env file now? (y/n): " EDIT_ENV
         if [[ $EDIT_ENV == "y" || $EDIT_ENV == "Y" ]]; then
             ${EDITOR:-vi} docker/.env
@@ -48,9 +48,9 @@ if grep -q "TELEGRAM_TOKEN=your_telegram_bot_token_here" .env; then
     echo -e "${YELLOW}The Gateway service will start, but Telegram bot will not work.${NC}"
 fi
 
-# Check if OpenAI API key is set
-if grep -q "OPENAI_API_KEY=your_openai_api_key_here" .env; then
-    echo -e "${RED}OPENAI_API_KEY is not set in .env file.${NC}"
+# Check if OpenRouter API key is set
+if grep -q "OPENROUTER_API_KEY=your_openrouter_api_key_here" .env; then
+    echo -e "${RED}OPENROUTER_API_KEY is not set in .env file.${NC}"
     echo -e "${YELLOW}The Analyzer service will not work properly without an API key.${NC}"
 fi
 
