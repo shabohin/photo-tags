@@ -1,18 +1,6 @@
 package openrouter
 
 import (
-	"context"
-
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
-)
-
-type OpenRouterClient interface {
-	AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error)
-}
-
-package openrouter
-
-import (
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -22,9 +10,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/sirupsen/logrus"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 )
+
+type OpenRouterClient interface {
+	AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error)
+}
 
 const (
 	defaultTimeout = 60 * time.Second
@@ -158,10 +151,24 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 		}).Error("Failed to send request to OpenRouter API")
 		return model.Metadata{}, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.WithFields(logrus.Fields{
+				"trace_id": traceID,
+				"error":    closeErr.Error(),
+			}).Error("Failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.logger.WithFields(logrus.Fields{
+				"trace_id": traceID,
+				"error":    err.Error(),
+			}).Error("Failed to read error response body")
+			return model.Metadata{}, fmt.Errorf("API error, status code: %d, failed to read response: %w", resp.StatusCode, err)
+		}
 		c.logger.WithFields(logrus.Fields{
 			"trace_id":    traceID,
 			"status_code": resp.StatusCode,

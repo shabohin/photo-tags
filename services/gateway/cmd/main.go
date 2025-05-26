@@ -120,9 +120,9 @@ func initializeDependencies(ctx context.Context, cfg *config.Config, logger *log
 	})
 
 	err := retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
-		client, err := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
-		if err != nil {
-			return err
+		client, clientErr := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
+		if clientErr != nil {
+			return clientErr
 		}
 		minioClient = client
 		return nil
@@ -143,9 +143,9 @@ func initializeDependencies(ctx context.Context, cfg *config.Config, logger *log
 	})
 
 	err = retry(5, 2*time.Second, logger, "RabbitMQ client creation", func() error {
-		client, err := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
-		if err != nil {
-			return err
+		client, clientErr := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
+		if clientErr != nil {
+			return clientErr
 		}
 		rabbitmqClient = client
 		return nil

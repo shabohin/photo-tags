@@ -183,7 +183,11 @@ func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotap
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Error("Failed to close response body", closeErr)
+		}
+	}()
 
 	// Determine content type
 	contentType := mime.TypeByExtension(filepath.Ext(fileName))
@@ -193,7 +197,7 @@ func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotap
 
 	// Generate trace ID
 	traceID := uuid.New().String()
-	log = NewBotLogger(log.Logger.WithTraceID(traceID), log.GetGroupID())
+	log = NewBotLogger(log.WithTraceID(traceID), log.GetGroupID())
 
 	// Upload file to MinIO
 	minioObjectPath := fmt.Sprintf("%s/%s", traceID, fileName)
@@ -249,7 +253,11 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 		b.sendErrorMessage(message.TelegramID, "Failed to download processed image")
 		return err
 	}
-	defer obj.Close()
+	defer func() {
+		if closeErr := obj.Close(); closeErr != nil {
+			botLog.Error("Failed to close MinIO object", closeErr)
+		}
+	}()
 
 	// Read file contents
 	fileBytes, err := io.ReadAll(obj)

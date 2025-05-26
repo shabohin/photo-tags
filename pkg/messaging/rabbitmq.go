@@ -40,7 +40,9 @@ func NewRabbitMQClient(url string) (*RabbitMQClient, error) {
 	// Create a channel
 	channel, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Printf("Error closing connection: %v", closeErr)
+		}
 		return nil, err
 	}
 
@@ -53,10 +55,14 @@ func NewRabbitMQClient(url string) (*RabbitMQClient, error) {
 // Close closes the connection and channel
 func (c *RabbitMQClient) Close() {
 	if c.channel != nil {
-		c.channel.Close()
+		if err := c.channel.Close(); err != nil {
+			log.Printf("Error closing channel: %v", err)
+		}
 	}
 	if c.conn != nil {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
 	}
 }
 

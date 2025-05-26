@@ -57,7 +57,9 @@ func (c *Consumer) connect() error {
 
 	c.channel, err = c.conn.Channel()
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 
@@ -70,7 +72,9 @@ func (c *Consumer) connect() error {
 		nil,   // arguments
 	)
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to declare queue: %w", err)
 	}
 
@@ -80,7 +84,9 @@ func (c *Consumer) connect() error {
 		false,           // global
 	)
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to set QoS: %w", err)
 	}
 

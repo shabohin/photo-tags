@@ -19,7 +19,7 @@ type OpenRouterGoAdapter struct {
 	maxTokens   int
 }
 
-func NewOpenRouterGoAdapter(apiKey, model, prompt string, temperature float64, maxTokens int) *OpenRouterGoAdapter {
+func NewOpenRouterGoAdapter(apiKey, model, prompt string, temperature float64, maxTokens int) OpenRouterClient {
 	return &OpenRouterGoAdapter{
 		apiKey:      apiKey,
 		model:       model,
@@ -33,11 +33,19 @@ func (a *OpenRouterGoAdapter) AnalyzeImage(ctx context.Context, imageBytes []byt
 	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes)
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", imageBase64)
 
-	client := openroutergo.NewClient().
+	client, err := openroutergo.NewClient().
 		WithAPIKey(a.apiKey).
-		CreateChatCompletion(ctx)
+		Create()
+	if err != nil {
+		return model.Metadata{}, err
+	}
 
-	resp, err := client
+	_, resp, err := client.
+		NewChatCompletion().
+		WithModel(a.model).
+		WithSystemMessage(a.prompt).
+		WithUserMessage(fmt.Sprintf("Please analyze this image: %s", dataURL)).
+		Execute()
 	if err != nil {
 		return model.Metadata{}, err
 	}

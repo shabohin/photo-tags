@@ -15,7 +15,14 @@ type MockMinioClient struct {
 
 func (m *MockMinioClient) DownloadImage(ctx context.Context, path string) ([]byte, error) {
 	args := m.Called(ctx, path)
-	return args.Get(0).([]byte), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	result, ok := args.Get(0).([]byte)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 // MockOpenRouterClient mock for OpenRouter client
@@ -25,7 +32,14 @@ type MockOpenRouterClient struct {
 
 func (m *MockOpenRouterClient) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error) {
 	args := m.Called(ctx, imageBytes, traceID)
-	return args.Get(0).(model.Metadata), args.Error(1)
+	if args.Get(0) == nil {
+		return model.Metadata{}, args.Error(1)
+	}
+	result, ok := args.Get(0).(model.Metadata)
+	if !ok {
+		return model.Metadata{}, args.Error(1)
+	}
+	return result, args.Error(1)
 }
 
 // MockPublisher mock for RabbitMQ Publisher
@@ -50,5 +64,12 @@ type MockImageAnalyzer struct {
 
 func (m *MockImageAnalyzer) AnalyzeImage(ctx context.Context, msg model.ImageUploadMessage) (model.Metadata, error) {
 	args := m.Called(ctx, msg)
-	return args.Get(0).(model.Metadata), args.Error(1)
+	if args.Get(0) == nil {
+		return model.Metadata{}, args.Error(1)
+	}
+	result, ok := args.Get(0).(model.Metadata)
+	if !ok {
+		return model.Metadata{}, args.Error(1)
+	}
+	return result, args.Error(1)
 }

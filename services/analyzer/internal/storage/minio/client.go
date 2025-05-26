@@ -71,7 +71,15 @@ func (c *Client) DownloadImage(ctx context.Context, path string) ([]byte, error)
 		}).Error("Failed to get object from MinIO")
 		return nil, fmt.Errorf("failed to get object: %w", err)
 	}
-	defer object.Close()
+	defer func() {
+		if closeErr := object.Close(); closeErr != nil {
+			c.logger.WithFields(logrus.Fields{
+				"bucket": c.originalBucket,
+				"path":   path,
+				"error":  closeErr.Error(),
+			}).Error("Failed to close MinIO object")
+		}
+	}()
 
 	info, err := object.Stat()
 	if err != nil {
