@@ -190,93 +190,79 @@ go test ./services/gateway/...
 
 ## Continuous Integration
 
-We use GitHub Actions for CI/CD with a matrix strategy optimized for our multi-module project structure:
+We use GitHub Actions for CI/CD with a simplified approach based on make commands:
 
 -   Automated testing on each commit
 -   Code coverage reporting
 -   Linting checks
--   Docker image building and testing
+-   Docker image building
 -   Security scanning with Gosec
 
-### Multi-Module CI Structure
+### Simplified CI Structure
 
-Our CI pipeline is designed to efficiently handle the multi-module nature of the project:
+Our CI pipeline has been streamlined to use the same make commands that developers use locally:
 
--   Matrix strategy for parallel job execution across modules
--   Module-specific workflows for each Go module:
-    -   `services/analyzer`
-    -   `services/gateway`
-    -   `services/processor`
-    -   `pkg`
--   Independent testing and linting for each module
--   Module-specific working directories in GitHub Actions
+-   Consistent workflow between local development and CI
+-   Centralized logic through the Makefile
+-   Only 3 jobs total (reduced from 15 jobs previously)
+-   No matrix strategy needed, reducing complexity
 
 ### CI Workflow Jobs
 
 The CI workflow consists of the following jobs:
 
-1. **Lint**: Runs golangci-lint on each module
+1. **Quality Checks**: Runs `make check` for all modules
 
-    - Uses module-specific configuration
-    - Sets working directory to the module path
-    - Uses cached dependencies for faster execution
-
-2. **Test**: Runs tests for each module
-
+    - Combines linting and testing into a single job
     - Executes unit tests with race detection
-    - Generates coverage reports
-    - Uploads coverage data to Codecov with module-specific flags
+    - Runs golangci-lint for code quality
+    - Generates and uploads coverage reports to Codecov
 
-3. **Build**: Compiles services
+2. **Build**: Uses `make build` for all services
 
-    - Only runs after lint and test jobs succeed
-    - Builds each service separately
-    - Verifies the code can be compiled successfully
+    - Only runs after quality checks succeed
+    - Builds all services using Docker Compose
+    - Ensures consistent build process with local development
 
-4. **Security**: Runs security scanning
+3. **Security**: Runs security scanning
     - Uses Gosec to identify security issues
-    - Scans each module independently
+    - Scans each service independently
 
 ### Running CI Checks Locally
 
-You can run the same checks locally that are executed in CI:
+You can run the same checks locally that are executed in CI, using the identical make commands:
 
 ```bash
-# Run linting on all modules
-./scripts/lint.sh
+# Run quality checks (linting + tests) on all modules
+make check
 
-# Run tests on all modules
-./scripts/test.sh
+# Build all services
+make build
 
-# Run the pre-commit checks
-./scripts/pre-commit
+# Run individual components manually if needed
+make lint
+make test
 ```
 
-The pre-commit hook is configured to run checks on each module separately, mirroring the CI behavior.
+This consistency between local and CI environments ensures that if your code passes checks locally, it should also pass in the CI pipeline.
+
+### Benefits of the Simplified Approach
+
+The new CI approach provides several advantages:
+
+-   **Consistent Developer Experience**: The same commands used locally now run in CI
+-   **Reduced Maintenance**: Fewer jobs to maintain and configure
+-   **Centralized Configuration**: Logic consolidated in Makefile and associated scripts
+-   **Faster Execution**: Fewer parallel jobs means less overhead and faster overall pipeline completion
+-   **Easier Troubleshooting**: When an issue occurs, it's easier to reproduce locally with the same commands
 
 ### Adding a New Module to CI
 
-To add a new Go module to the CI pipeline:
+When adding a new Go module to the project:
 
-1. Update the module list in `.github/workflows/ci.yml`:
-
-    ```yaml
-    matrix:
-        module:
-            - services/analyzer
-            - services/gateway
-            - services/processor
-            - pkg
-            - your-new-module
-    ```
-
-2. Update the module list in `scripts/pre-commit`:
-
-    ```bash
-    GO_MODULES=("services/analyzer" "services/gateway" "services/processor" "pkg" "your-new-module")
-    ```
-
-3. Update other scripts as needed (e.g., `scripts/lint.sh`, `scripts/test.sh`)
+1. Update the module-specific scripts (e.g., `scripts/lint.sh`, `scripts/test.sh`)
+2. The CI pipeline will automatically include it without changes to the workflow file
+3. Update the Makefile if needed for any module-specific build steps
 
 ## Documentation
 
@@ -345,9 +331,9 @@ To add a new Go module to the CI pipeline:
     - Document service responsibilities and interactions
 
 7. Integrate with CI/CD pipeline:
-    - Add to matrix configuration in .github/workflows/ci.yml
-    - Add to GO_MODULES array in scripts/pre-commit
-    - Update scripts/lint.sh to include the new service
+    - Update scripts/lint.sh and scripts/test.sh to include the new service
+    - Update scripts/pre-commit to include the new service
+    - No changes needed to CI workflow file as it uses make commands
 
 ### Debugging Tips
 
