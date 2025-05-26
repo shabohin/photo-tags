@@ -110,7 +110,11 @@ func main() {
 }
 
 // initializeDependencies initializes MinIO and RabbitMQ clients
-func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
+func initializeDependencies(
+	ctx context.Context,
+	cfg *config.Config,
+	logger *logging.Logger,
+) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
 	var minioClient storage.MinIOInterface
 	var rabbitmqClient messaging.RabbitMQInterface
 
@@ -120,7 +124,8 @@ func initializeDependencies(ctx context.Context, cfg *config.Config, logger *log
 	})
 
 	err := retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
-		client, clientErr := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
+		client, clientErr := storage.NewMinIOClient(
+			cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
 		if clientErr != nil {
 			return clientErr
 		}

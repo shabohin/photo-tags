@@ -25,13 +25,13 @@ const (
 )
 
 type Client struct {
-	apiKey      string
-	model       string
-	maxTokens   int
-	temperature float64
-	prompt      string
 	httpClient  *http.Client
 	logger      *logrus.Logger
+	apiKey      string
+	model       string
+	prompt      string
+	temperature float64
+	maxTokens   int
 }
 
 type OpenRouterRequest struct {
@@ -47,9 +47,9 @@ type Message struct {
 }
 
 type ContentItem struct {
+	ImageURL *ImageURL `json:"image_url,omitempty"`
 	Type     string    `json:"type"`
 	Text     string    `json:"text,omitempty"`
-	ImageURL *ImageURL `json:"image_url,omitempty"`
 }
 
 type ImageURL struct {
@@ -74,10 +74,17 @@ type MetadataResponse struct {
 	Keywords    []string `json:"keywords"`
 }
 
-func NewClient(apiKey, model string, maxTokens int, temperature float64, prompt string, logger *logrus.Logger) *Client {
+func NewClient(
+	apiKey string,
+	modelName string,
+	maxTokens int,
+	temperature float64,
+	prompt string,
+	logger *logrus.Logger,
+) *Client {
 	return &Client{
 		apiKey:      apiKey,
-		model:       model,
+		model:       modelName,
 		maxTokens:   maxTokens,
 		temperature: temperature,
 		prompt:      prompt,

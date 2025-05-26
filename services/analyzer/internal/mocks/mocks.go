@@ -30,7 +30,8 @@ type MockOpenRouterClient struct {
 	mock.Mock
 }
 
-func (m *MockOpenRouterClient) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error) {
+func (m *MockOpenRouterClient) AnalyzeImage(ctx context.Context,
+	imageBytes []byte, traceID string) (model.Metadata, error) {
 	args := m.Called(ctx, imageBytes, traceID)
 	if args.Get(0) == nil {
 		return model.Metadata{}, args.Error(1)

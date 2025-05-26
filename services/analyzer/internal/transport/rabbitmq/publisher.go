@@ -10,16 +10,17 @@ import (
 )
 
 type Publisher struct {
-	url        string
-	queueName  string
-	maxRetries int
-	retryDelay time.Duration
 	logger     *logrus.Logger
 	conn       *amqp.Connection
 	channel    *amqp.Channel
+	url        string
+	queueName  string
+	retryDelay time.Duration
+	maxRetries int
 }
 
-func NewPublisher(url, queueName string, maxRetries int, retryDelay time.Duration, logger *logrus.Logger) (*Publisher, error) {
+func NewPublisher(url, queueName string, maxRetries int, retryDelay time.Duration,
+	logger *logrus.Logger) (*Publisher, error) {
 	publisher := &Publisher{
 		url:        url,
 		queueName:  queueName,

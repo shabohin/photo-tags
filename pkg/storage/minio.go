@@ -45,7 +45,12 @@ func NewMinIOClient(endpoint, accessKey, secretKey string, useSSL bool) (*MinIOC
 }
 
 // UploadFile uploads a file to MinIO
-func (c *MinIOClient) UploadFile(ctx context.Context, bucketName, objectName string, reader io.Reader, contentType string) error {
+func (c *MinIOClient) UploadFile(
+	ctx context.Context,
+	bucketName, objectName string,
+	reader io.Reader,
+	contentType string,
+) error {
 	// Upload file to bucket
 	_, err := c.client.PutObject(ctx, bucketName, objectName, reader, -1, minio.PutObjectOptions{
 		ContentType: contentType,
@@ -60,7 +65,11 @@ func (c *MinIOClient) DownloadFile(ctx context.Context, bucketName, objectName s
 }
 
 // GetPresignedURL generates a presigned URL for an object
-func (c *MinIOClient) GetPresignedURL(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error) {
+func (c *MinIOClient) GetPresignedURL(
+	ctx context.Context,
+	bucketName, objectName string,
+	expiry time.Duration,
+) (string, error) {
 	// Generate presigned URL
 	url, err := c.client.PresignedGetObject(ctx, bucketName, objectName, expiry, nil)
 	if err != nil {

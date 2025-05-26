@@ -18,14 +18,14 @@ import (
 )
 
 type App struct {
+	shutdown    chan struct{}
 	consumer    *rabbitmq.Consumer
 	publisher   *rabbitmq.Publisher
 	minioClient *minio.Client
 	processor   *service.MessageProcessorService
 	logger      *logrus.Logger
-	workerCount int
-	shutdown    chan struct{}
 	shutdownWg  sync.WaitGroup
+	workerCount int
 }
 
 func New(cfg *config.Config) (*App, error) {

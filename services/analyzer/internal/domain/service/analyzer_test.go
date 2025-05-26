@@ -113,7 +113,17 @@ func TestAnalyzeImage_OpenRouterError(t *testing.T) {
 	minioClient.On("DownloadImage", mock.Anything, "test-image.jpg").Return(imageBytes, nil)
 
 	// Setup mock for OpenRouter client with error
-	openRouterClient.On("AnalyzeImage", mock.Anything, imageBytes, "test-trace-id").Return(model.Metadata{}, errors.New("openrouter error"))
+	openRouterClient.
+		On(
+			"AnalyzeImage",
+			mock.Anything,
+			imageBytes,
+			"test-trace-id",
+		).
+		Return(
+			model.Metadata{},
+			errors.New("openrouter error"),
+		)
 
 	// Create service with mocks
 	analyzer := NewImageAnalyzer(minioClient, openRouterClient, logger)

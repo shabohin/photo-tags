@@ -13,28 +13,33 @@ import (
 // MockMinIOClient is a mock implementation of storage.MinIOInterface
 type MockMinIOClient struct {
 	EnsureBucketExistsFunc func(ctx context.Context, bucketName string) error
-	UploadFileFunc         func(ctx context.Context, bucketName, objectName string, reader io.Reader, contentType string) error
-	DownloadFileFunc       func(ctx context.Context, bucketName, objectName string) (*minio.Object, error)
-	GetPresignedURLFunc    func(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error)
+	UploadFileFunc         func(ctx context.Context, bucketName, objectName string,
+		reader io.Reader, contentType string) error
+	DownloadFileFunc    func(ctx context.Context, bucketName, objectName string) (*minio.Object, error)
+	GetPresignedURLFunc func(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error)
 }
 
 // EnsureBucketExists mocks the EnsureBucketExists method of MinIOInterface
-func (m *MockMinIOClient) EnsureBucketExists(ctx context.Context, bucketName string) error {
+func (m *MockMinIOClient) EnsureBucketExists(ctx context.Context,
+	bucketName string) error {
 	return m.EnsureBucketExistsFunc(ctx, bucketName)
 }
 
 // UploadFile mocks the UploadFile method of MinIOInterface
-func (m *MockMinIOClient) UploadFile(ctx context.Context, bucketName, objectName string, reader io.Reader, contentType string) error {
+func (m *MockMinIOClient) UploadFile(ctx context.Context, bucketName,
+	objectName string, reader io.Reader, contentType string) error {
 	return m.UploadFileFunc(ctx, bucketName, objectName, reader, contentType)
 }
 
 // DownloadFile mocks the DownloadFile method of MinIOInterface
-func (m *MockMinIOClient) DownloadFile(ctx context.Context, bucketName, objectName string) (*minio.Object, error) {
+func (m *MockMinIOClient) DownloadFile(ctx context.Context, bucketName,
+	objectName string) (*minio.Object, error) {
 	return m.DownloadFileFunc(ctx, bucketName, objectName)
 }
 
 // GetPresignedURL mocks the GetPresignedURL method of MinIOInterface
-func (m *MockMinIOClient) GetPresignedURL(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error) {
+func (m *MockMinIOClient) GetPresignedURL(ctx context.Context,
+	bucketName, objectName string, expiry time.Duration) (string, error) {
 	return m.GetPresignedURLFunc(ctx, bucketName, objectName, expiry)
 }
 
@@ -70,12 +75,12 @@ func (m *MockRabbitMQClient) Close() {
 
 // ReadCloserMock implements io.ReadCloser for testing
 type ReadCloserMock struct {
-	ReadFunc  func(p []byte) (n int, err error)
+	ReadFunc  func(p []byte) (int, error)
 	CloseFunc func() error
 }
 
 // Read implements the Read method of io.ReadCloser
-func (m ReadCloserMock) Read(p []byte) (n int, err error) {
+func (m ReadCloserMock) Read(p []byte) (int, error) {
 	return m.ReadFunc(p)
 }
 
@@ -87,7 +92,7 @@ func (m ReadCloserMock) Close() error {
 // NewMockReadCloser creates a new mock ReadCloser with content
 func NewMockReadCloser(content []byte) io.ReadCloser {
 	return &ReadCloserMock{
-		ReadFunc: func(p []byte) (n int, err error) {
+		ReadFunc: func(p []byte) (int, error) {
 			return bytes.NewReader(content).Read(p)
 		},
 		CloseFunc: func() error {

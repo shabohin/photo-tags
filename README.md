@@ -275,7 +275,7 @@ The project uses a comprehensive golangci-lint configuration (`.golangci.yml`) w
 - Enabled linters: 25+ linters covering security, performance, style, and bugs
 - Custom rules for test files
 - Local import prefix: `github.com/shabohin/photo-tags`
-- Line length limit: 140 characters
+- Line length limit: 120 characters
 
 ### VS Code Integration
 

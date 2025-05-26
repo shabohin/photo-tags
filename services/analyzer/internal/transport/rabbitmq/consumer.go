@@ -11,17 +11,24 @@ import (
 )
 
 type Consumer struct {
-	url           string
-	queueName     string
-	prefetchCount int
-	maxRetries    int
-	retryDelay    time.Duration
 	logger        *logrus.Logger
 	conn          *amqp.Connection
 	channel       *amqp.Channel
+	url           string
+	queueName     string
+	retryDelay    time.Duration
+	prefetchCount int
+	maxRetries    int
 }
 
-func NewConsumer(url, queueName string, prefetchCount, maxRetries int, retryDelay time.Duration, logger *logrus.Logger) (*Consumer, error) {
+func NewConsumer(
+	url string,
+	queueName string,
+	prefetchCount int,
+	maxRetries int,
+	retryDelay time.Duration,
+	logger *logrus.Logger,
+) (*Consumer, error) {
 	consumer := &Consumer{
 		url:           url,
 		queueName:     queueName,

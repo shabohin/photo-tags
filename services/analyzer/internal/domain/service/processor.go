@@ -20,7 +20,13 @@ type MessageProcessorService struct {
 	retryDelay    time.Duration
 }
 
-func NewMessageProcessor(imageAnalyzer *ImageAnalyzerService, publisher *rabbitmq.Publisher, logger *logrus.Logger, maxRetries int, retryDelay time.Duration) *MessageProcessorService {
+func NewMessageProcessor(
+	imageAnalyzer *ImageAnalyzerService,
+	publisher *rabbitmq.Publisher,
+	logger *logrus.Logger,
+	maxRetries int,
+	retryDelay time.Duration,
+) *MessageProcessorService {
 	return &MessageProcessorService{
 		imageAnalyzer: imageAnalyzer,
 		publisher:     publisher,

@@ -18,7 +18,14 @@ type Client struct {
 	originalBucket string
 }
 
-func NewClient(endpoint, accessKey, secretKey string, useSSL bool, originalBucket string, logger *logrus.Logger, attempts int, delay time.Duration) (*Client, error) {
+func NewClient(endpoint,
+	accessKey,
+	secretKey string,
+	useSSL bool,
+	originalBucket string,
+	logger *logrus.Logger,
+	attempts int,
+	delay time.Duration) (*Client, error) {
 	var client *minio.Client
 	var err error
 

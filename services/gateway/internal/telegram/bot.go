@@ -50,7 +50,12 @@ func NewBotLogger(logger *logging.Logger, groupID string) *BotLogger {
 }
 
 // NewBot creates a new Telegram bot
-func NewBot(cfg *config.Config, logger *logging.Logger, minio storage.MinIOInterface, rabbitmq messaging.RabbitMQInterface) (*Bot, error) {
+func NewBot(
+	cfg *config.Config,
+	logger *logging.Logger,
+	minio storage.MinIOInterface,
+	rabbitmq messaging.RabbitMQInterface,
+) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Telegram bot: %w", err)
@@ -176,9 +181,20 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 // processMedia processes media files (photos and documents)
-func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotapi.Message, _, fileName, fileURL string) error {
+func (b *Bot) processMedia(
+	ctx context.Context,
+	log *BotLogger,
+	message *tgbotapi.Message,
+	_ string,
+	fileName string,
+	fileURL string,
+) error {
 	// Download file
-	resp, err := http.Get(fileURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
 	}
@@ -290,9 +306,16 @@ func (b *Bot) handleTextMessage(message *tgbotapi.Message) {
 	if message.IsCommand() {
 		switch message.Command() {
 		case "start":
-			b.sendMessage(message.Chat.ID, "Welcome to Photo Tags Bot! Send me an image, and I'll add AI-generated metadata to it.")
+			b.sendMessage(
+				message.Chat.ID,
+				"Welcome to Photo Tags Bot! Send me an image, "+
+					"and I'll add AI-generated metadata to it.",
+			)
 		case "help":
-			b.sendMessage(message.Chat.ID, "This bot automatically adds titles, descriptions, and keywords to your images using AI.\n\nJust send me a JPG or PNG image, and I'll process it for you!")
+			helpText := "This bot automatically adds titles, descriptions, and keywords " +
+				"to your images using AI.\n\n" +
+				"Just send me a JPG or PNG image, and I'll process it for you!"
+			b.sendMessage(message.Chat.ID, helpText)
 		default:
 			b.sendMessage(message.Chat.ID, "Unknown command. Try /help for available commands.")
 		}

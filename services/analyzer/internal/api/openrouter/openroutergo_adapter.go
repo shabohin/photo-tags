@@ -19,17 +19,21 @@ type OpenRouterGoAdapter struct {
 	maxTokens   int
 }
 
-func NewOpenRouterGoAdapter(apiKey, model, prompt string, temperature float64, maxTokens int) OpenRouterClient {
+func NewOpenRouterGoAdapter(apiKey, modelName, prompt string, temperature float64, maxTokens int) OpenRouterClient {
 	return &OpenRouterGoAdapter{
 		apiKey:      apiKey,
-		model:       model,
+		model:       modelName,
 		prompt:      prompt,
 		temperature: temperature,
 		maxTokens:   maxTokens,
 	}
 }
 
-func (a *OpenRouterGoAdapter) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error) {
+func (a *OpenRouterGoAdapter) AnalyzeImage(
+	ctx context.Context,
+	imageBytes []byte,
+	traceID string,
+) (model.Metadata, error) {
 	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes)
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", imageBase64)
 
