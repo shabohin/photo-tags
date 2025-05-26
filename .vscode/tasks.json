@@ -42,8 +42,7 @@
         {
             "label": "Run Linting",
             "type": "shell",
-            "command": "make",
-            "args": ["lint"],
+            "command": "./scripts/lint.sh",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -62,6 +61,17 @@
                     }
                 ]
             }
+        },
+        {
+            "label": "Auto-fix Linting Issues",
+            "type": "shell",
+            "command": "./scripts/fix-lint.sh",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
         },
         {
             "label": "Fix Dependencies",

@@ -13,9 +13,9 @@ import (
 )
 
 type Client struct {
+	logger         *logrus.Logger
 	client         *minio.Client
 	originalBucket string
-	logger         *logrus.Logger
 }
 
 func NewClient(endpoint, accessKey, secretKey string, useSSL bool, originalBucket string, logger *logrus.Logger, attempts int, delay time.Duration) (*Client, error) {

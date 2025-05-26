@@ -138,7 +138,6 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process photo")
 			return
 		}
-
 	} else if update.Message.Document != nil {
 		// Handle document
 		document := update.Message.Document
@@ -241,7 +240,7 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 
 	// Check if processing failed
 	if message.Status == "failed" {
-		b.sendErrorMessage(message.TelegramID, fmt.Sprintf("Failed to process image: %s", message.Error))
+		b.sendErrorMessage(message.TelegramID, "Failed to process image: "+message.Error)
 		return nil
 	}
 

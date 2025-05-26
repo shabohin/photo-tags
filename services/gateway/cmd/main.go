@@ -53,7 +53,7 @@ func main() {
 
 	// Create logger
 	logger := logging.NewLogger("gateway")
-	logger.Info(fmt.Sprintf("Starting Gateway Service v1.0.0 at %s", time.Now().Format(time.RFC3339)), nil)
+	logger.Info("Starting Gateway Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
 
 	// Initialize dependencies
 	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)

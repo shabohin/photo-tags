@@ -114,7 +114,7 @@ The service provides detailed logging for monitoring and debugging:
 ### Log Categories
 
 - **Model Selection**: Daily checks for available free vision models
-- **Rate Limiting**: Automatic handling of API rate limits with retry scheduling  
+- **Rate Limiting**: Automatic handling of API rate limits with retry scheduling
 - **Error Handling**: Detailed error tracking for troubleshooting
 - **Performance**: Processing time metrics and queue status
 - **User Interactions**: Request tracking and processing status
@@ -142,7 +142,7 @@ docker logs minio -f
 
 Key log patterns to monitor:
 - `"Model selection completed"` - Daily model availability checks
-- `"Service restored"` - Recovery from model unavailability  
+- `"Service restored"` - Recovery from model unavailability
 - `"Rate limit exceeded"` - API throttling with retry times
 - `"Processing queue"` - Backlog processing status
 
@@ -160,7 +160,7 @@ The service implements intelligent queue management:
 
 The Analyzer service:
 1. **Daily Checks**: Queries OpenRouter API for available free vision models
-2. **Capability Filtering**: Only selects models with image analysis capabilities  
+2. **Capability Filtering**: Only selects models with image analysis capabilities
 3. **Cost Optimization**: Prioritizes free models to minimize operational costs
 4. **Performance Ranking**: Uses OpenRouter's model rankings for selection
 5. **Automatic Fallback**: Gracefully handles model unavailability
@@ -188,10 +188,10 @@ Robust error handling includes:
    ```bash
    # Using the provided script
    ./scripts/install-golangci-lint.sh
-   
+
    # Or manually via Go
    go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
-   
+
    # Or via Homebrew (macOS)
    brew install golangci-lint
    ```
@@ -275,7 +275,7 @@ The project uses a comprehensive golangci-lint configuration (`.golangci.yml`) w
 - Enabled linters: 25+ linters covering security, performance, style, and bugs
 - Custom rules for test files
 - Local import prefix: `github.com/shabohin/photo-tags`
-- Line length limit: 120 characters
+- Line length limit: 140 characters
 
 ### VS Code Integration
 

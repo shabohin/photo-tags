@@ -15,7 +15,9 @@ type ImageAnalyzerService struct {
 	logger           *logrus.Logger
 }
 
-func NewImageAnalyzer(minioClient MinioClientInterface, openRouterClient OpenRouterClientInterface, logger *logrus.Logger) *ImageAnalyzerService {
+func NewImageAnalyzer(minioClient MinioClientInterface,
+	openRouterClient OpenRouterClientInterface,
+	logger *logrus.Logger) *ImageAnalyzerService {
 	return &ImageAnalyzerService{
 		minioClient:      minioClient,
 		openRouterClient: openRouterClient,

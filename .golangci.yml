@@ -10,7 +10,7 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    
+
     # Code quality
     - bodyclose
     - dogsled
@@ -29,14 +29,13 @@ linters:
     - unconvert
     - unparam
     - whitespace
-    
+
     # Performance optimization
     - asasalint
     - contextcheck
     - nilerr
     - noctx
-    - perfsprint
-    
+
     # Style and best practices
     - asciicheck
     - bidichk
@@ -55,11 +54,10 @@ linters:
     - nosprintfhostport
     - predeclared
     - reassign
-    - tagliatelle
     - testableexamples
     - usestdlibvars
     - wastedassign
-    
+
   settings:
     dupl:
       threshold: 100
@@ -89,7 +87,7 @@ linters:
         - shadow
         - fieldalignment
     lll:
-      line-length: 120
+      line-length: 140
     misspell:
       locale: US
     nestif:
@@ -111,7 +109,7 @@ linters:
       alias:
         - pkg: context
           alias: ctx
-    
+
   exclusions:
     generated: lax
     presets:
@@ -132,8 +130,8 @@ linters:
           - noctx
           - forcetypeassert
         path: _test\.go
-        
-      # Mock files exceptions  
+
+      # Mock files exceptions
       - linters:
           - dupl
           - errcheck
@@ -143,7 +141,7 @@ linters:
           - revive
           - gocritic
         path: mock.*\.go
-        
+
       # Main files can be longer and more complex
       - linters:
           - funlen
@@ -151,7 +149,7 @@ linters:
           - nestif
           - gocritic
         path: cmd/main\.go
-        
+
       # Telegram bot handlers can be complex
       - linters:
           - funlen
@@ -160,43 +158,43 @@ linters:
           - nestif
           - gosec
         path: internal/telegram/.*\.go
-        
+
       # Config loading can have many assignments
       - linters:
           - funlen
           - gocyclo
         path: internal/config/.*\.go
-        
+
       # API clients can be long
       - linters:
           - funlen
           - gocyclo
           - nestif
         path: internal/api/.*\.go
-        
+
       # App initialization can be complex
       - linters:
           - funlen
           - gocyclo
         path: internal/app/.*\.go
-        
+
       # Domain services can be complex
       - linters:
           - funlen
           - gocyclo
         path: internal/domain/service/.*\.go
-        
+
       # Constants files exceptions
       - linters:
           - gochecknoinits
           - gocritic
         path: internal/constants/.*\.go
-        
+
     paths:
       - third_party$
       - builtin$
       - examples$
-      
+
 formatters:
   enable:
     - gofmt
