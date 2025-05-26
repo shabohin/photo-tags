@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Pre-commit hook for Go projects
+# This script runs before each commit to ensure code quality
+
+# Set colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Running pre-commit checks...${NC}"
+
+# Check if we're in a Git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    echo -e "${RED}Error: Not in a Git repository${NC}"
+    exit 1
+fi
+
+# Get the list of staged Go files
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+
+if [ -z "$STAGED_GO_FILES" ]; then
+    echo -e "${GREEN}No Go files staged for commit${NC}"
+    exit 0
+fi
+
+echo -e "${YELLOW}Staged Go files:${NC}"
+echo "$STAGED_GO_FILES"
+echo
+
+# Run gofmt check
+echo -e "${YELLOW}Checking gofmt...${NC}"
+UNFORMATTED_FILES=$(echo "$STAGED_GO_FILES" | xargs gofmt -l)
+if [ -n "$UNFORMATTED_FILES" ]; then
+    echo -e "${RED}The following files are not formatted:${NC}"
+    echo "$UNFORMATTED_FILES"
+    echo -e "${YELLOW}Run 'gofmt -w <file>' or 'make fmt' to fix${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ All files are properly formatted${NC}"
+
+# Run goimports check
+echo -e "${YELLOW}Checking goimports...${NC}"
+if command -v goimports >/dev/null 2>&1; then
+    UNIMPORTED_FILES=$(echo "$STAGED_GO_FILES" | xargs goimports -l -local github.com/shabohin/photo-tags)
+    if [ -n "$UNIMPORTED_FILES" ]; then
+        echo -e "${RED}The following files have import issues:${NC}"
+        echo "$UNIMPORTED_FILES"
+        echo -e "${YELLOW}Run 'goimports -w -local github.com/shabohin/photo-tags <file>' or 'make fmt' to fix${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ All imports are properly organized${NC}"
+else
+    echo -e "${YELLOW}Warning: goimports not found, skipping import check${NC}"
+fi
+
+# Run go vet
+echo -e "${YELLOW}Running go vet...${NC}"
+if ! go vet ./...; then
+    echo -e "${RED}go vet found issues${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ go vet passed${NC}"
+
+# Run golangci-lint if available
+echo -e "${YELLOW}Running golangci-lint...${NC}"
+if command -v golangci-lint >/dev/null 2>&1; then
+    if ! golangci-lint run --timeout=5m; then
+        echo -e "${RED}golangci-lint found issues${NC}"
+        echo -e "${YELLOW}Run 'make lint-fix' to auto-fix issues or 'make lint' to see details${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ golangci-lint passed${NC}"
+else
+    echo -e "${YELLOW}Warning: golangci-lint not found, skipping lint check${NC}"
+    echo -e "${YELLOW}Install it with: ./scripts/install-golangci-lint.sh${NC}"
+fi
+
+# Run tests
+echo -e "${YELLOW}Running tests...${NC}"
+if ! go test -race ./...; then
+    echo -e "${RED}Tests failed${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ All tests passed${NC}"
+
+echo
+echo -e "${GREEN}All pre-commit checks passed! ✨${NC}"
+echo -e "${GREEN}Ready to commit.${NC}"

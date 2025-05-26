@@ -7,20 +7,24 @@ on:
     pull_request:
         branches: [main]
 
+env:
+  GO_VERSION: '1.24'
+  GOLANGCI_LINT_VERSION: 'v1.55.2'
+
 jobs:
     test:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             - name: Set up Go
-              uses: actions/setup-go@v4
+              uses: actions/setup-go@v5
               with:
-                  go-version: '1.21'
+                  go-version: ${{ env.GO_VERSION }}
                   cache: true
 
             - name: Cache Go modules
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               with:
                   path: |
                       ~/.cache/go-build
@@ -29,56 +33,85 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-go-
 
+            - name: Download dependencies
+              run: |
+                  cd services/gateway && go mod download
+                  cd ../analyzer && go mod download  
+                  cd ../processor && go mod download
+                  cd ../../pkg && go mod download
+
             - name: Test Gateway
-              run: cd services/gateway && go test -race -p 4 ./...
+              run: cd services/gateway && go test -race -v -coverprofile=coverage.out ./...
 
             - name: Test Analyzer
-              run: cd services/analyzer && go test -race -p 4 ./...
+              run: cd services/analyzer && go test -race -v -coverprofile=coverage.out ./...
 
             - name: Test Processor
-              run: cd services/processor && go test -race -p 4 ./...
+              run: cd services/processor && go test -race -v -coverprofile=coverage.out ./...
 
             - name: Test Shared Packages
-              run: cd pkg && go test -race -p 4 ./...
+              run: cd pkg && go test -race -v -coverprofile=coverage.out ./...
+
+            - name: Upload coverage reports to Codecov
+              uses: codecov/codecov-action@v4
+              with:
+                  files: |
+                      ./services/gateway/coverage.out
+                      ./services/analyzer/coverage.out
+                      ./services/processor/coverage.out
+                      ./pkg/coverage.out
+                  fail_ci_if_error: false
+                  verbose: true
 
     lint:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             - name: Set up Go
-              uses: actions/setup-go@v4
+              uses: actions/setup-go@v5
               with:
-                  go-version: '1.21'
+                  go-version: ${{ env.GO_VERSION }}
 
-            - name: Lint Gateway
-              uses: golangci/golangci-lint-action@v3
+            - name: golangci-lint Gateway
+              uses: golangci/golangci-lint-action@v4
               with:
-                  version: latest
-                  args: --timeout=5m
-                  skip-cache: false
+                  version: ${{ env.GOLANGCI_LINT_VERSION }}
+                  args: --timeout=5m --config=../.golangci.yml
                   working-directory: services/gateway
 
-            - name: Lint Analyzer
-              uses: golangci/golangci-lint-action@v3
+            - name: golangci-lint Analyzer
+              uses: golangci/golangci-lint-action@v4
               with:
-                  version: latest
-                  args: --timeout=5m
-                  skip-cache: false
+                  version: ${{ env.GOLANGCI_LINT_VERSION }}
+                  args: --timeout=5m --config=../.golangci.yml
                   working-directory: services/analyzer
 
-            - name: Lint Processor
-              uses: golangci/golangci-lint-action@v3
+            - name: golangci-lint Processor
+              uses: golangci/golangci-lint-action@v4
               with:
-                  version: latest
-                  args: --timeout=5m
-                  skip-cache: false
+                  version: ${{ env.GOLANGCI_LINT_VERSION }}
+                  args: --timeout=5m --config=../.golangci.yml
                   working-directory: services/processor
 
-            - name: Lint Shared Packages
-              uses: golangci/golangci-lint-action@v3
+            - name: golangci-lint Shared Packages
+              uses: golangci/golangci-lint-action@v4
               with:
-                  version: latest
-                  args: --timeout=5m
-                  skip-cache: false
+                  version: ${{ env.GOLANGCI_LINT_VERSION }}
+                  args: --timeout=5m --config=.golangci.yml
                   working-directory: pkg
+
+    security:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+
+            - name: Run Gosec Security Scanner
+              uses: securecodewarrior/github-action-gosec@master
+              with:
+                  args: './...'

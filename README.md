@@ -172,3 +172,155 @@ Robust error handling includes:
 - **Model Failover**: Attempts multiple models when primary is unavailable
 - **Queue Persistence**: No requests lost during service interruptions
 - **User Communication**: Clear status updates without technical jargon
+
+
+## Development
+
+### Prerequisites for Development
+
+- Go 1.24+
+- Docker and Docker Compose
+- golangci-lint (for code quality)
+
+### Setting Up Development Environment
+
+1. **Install golangci-lint**:
+   ```bash
+   # Using the provided script
+   ./scripts/install-golangci-lint.sh
+   
+   # Or manually via Go
+   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+   
+   # Or via Homebrew (macOS)
+   brew install golangci-lint
+   ```
+
+2. **Install development dependencies**:
+   ```bash
+   make install-tools
+   make deps
+   ```
+
+3. **Setup Git hooks** (optional):
+   ```bash
+   make install-hooks
+   ```
+
+### Code Quality
+
+This project uses golangci-lint for maintaining code quality. The configuration includes:
+
+- **Basic linters**: errcheck, gosimple, govet, staticcheck, unused
+- **Formatting**: gofmt, goimports with local prefix support
+- **Code quality**: revive, gocritic, cyclop for complexity analysis
+- **Security**: gosec for security issues
+- **Performance**: prealloc for slice optimization
+- **Style**: misspell, whitespace, unconvert
+
+### Available Make Commands
+
+```bash
+# Code quality
+make lint          # Run linter on all modules
+make lint-fix      # Run linter with auto-fix
+make fmt           # Format all Go files
+make pre-commit    # Run format, lint, and test
+
+# Testing
+make test          # Run all tests
+make test-race     # Run tests with race detector
+make test-coverage # Run tests with coverage reports
+
+# Development
+make deps          # Download and tidy dependencies
+make build         # Build all services
+make check         # Run all quality checks (tests + linting)
+
+# Docker operations
+make docker-build  # Build Docker images
+make docker-up     # Start services with Docker Compose
+make docker-down   # Stop services
+make docker-logs   # Show Docker logs
+
+# Environment
+make start         # Start all services
+make stop          # Stop all services
+make setup         # Setup the environment
+make clean         # Clean build artifacts and stop services
+
+# Information
+make help          # Show all available commands
+make version       # Show Go and tool versions
+```
+
+### Running Quality Checks
+
+Before committing code, run:
+
+```bash
+make pre-commit
+```
+
+This will:
+1. Format all Go files
+2. Run golangci-lint on all modules
+3. Run all tests
+
+### Linting Configuration
+
+The project uses a comprehensive golangci-lint configuration (`.golangci.yml`) with:
+
+- Timeout: 5 minutes
+- Enabled linters: 25+ linters covering security, performance, style, and bugs
+- Custom rules for test files
+- Local import prefix: `github.com/shabohin/photo-tags`
+- Line length limit: 120 characters
+
+### VS Code Integration
+
+If you use VS Code, the project includes settings for:
+- Automatic formatting on save
+- golangci-lint integration
+- Import organization
+- Go-specific editor settings
+
+The configuration is in `.vscode/settings.json`.
+
+### Testing
+
+Run tests with various options:
+
+```bash
+# Run all tests
+make test
+
+# Run tests with race detection
+make test-race
+
+# Generate coverage reports
+make test-coverage
+```
+
+Coverage reports are generated in the `coverage/` directory.
+
+### Common Development Tasks
+
+1. **Adding new linter rules**:
+   Edit `.golangci.yml` and add new linters to the `enable` section.
+
+2. **Fixing linting issues**:
+   ```bash
+   make lint-fix  # Auto-fix what can be fixed
+   make lint      # Check remaining issues
+   ```
+
+3. **Updating dependencies**:
+   ```bash
+   make deps
+   ```
+
+4. **Before creating a PR**:
+   ```bash
+   make check  # Runs both tests and linting
+   ```

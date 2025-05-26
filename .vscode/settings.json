@@ -1,0 +1,51 @@
+{
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--fast",
+        "--timeout=5m"
+    ],
+    "go.lintOnSave": "package",
+    "go.formatTool": "goimports",
+    "go.formatFlags": [
+        "-local",
+        "github.com/shabohin/photo-tags"
+    ],
+    "go.useLanguageServer": true,
+    "go.toolsManagement.autoUpdate": true,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true,
+        "source.fixAll": true
+    },
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "[go]": {
+        "editor.defaultFormatter": "golang.go",
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    },
+    "[go.mod]": {
+        "editor.defaultFormatter": "golang.go",
+        "editor.formatOnSave": true
+    },
+    "[go.sum]": {
+        "editor.defaultFormatter": "golang.go"
+    },
+    "gopls": {
+        "formatting.gofumpt": true,
+        "ui.completion.usePlaceholders": true,
+        "ui.diagnostic.analyses": {
+            "fieldalignment": false,
+            "shadow": true,
+            "unusedparams": true,
+            "unusedwrite": true
+        },
+        "ui.semanticTokens": true
+    }
+}

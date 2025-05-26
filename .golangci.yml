@@ -2,23 +2,84 @@ run:
   timeout: 5m
   tests: true
   modules-download-mode: readonly
+  skip-dirs:
+    - vendor
+    - .git
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  govet:
+    check-shadowing: true
+  
+  gofmt:
+    simplify: true
+  
+  goimports:
+    local-prefixes: github.com/shabohin/photo-tags
+  
+  revive:
+    severity: warning
+    rules:
+      - name: exported
+        severity: warning
+      - name: package-comments
+        severity: warning
 
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - gofmt
-    - goimports
-    - misspell
-    - revive
+    # Basic linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Go static analysis
+    - typecheck     # Type checking
+    - unused        # Check for unused constants, variables, functions and types
+    
+    # Formatting
+    - gofmt         # Check whether code was gofmt-ed
+    - goimports     # Check import statements are formatted well
+    
+    # Code quality
+    - revive        # Fast, configurable, extensible, flexible, and beautiful linter
+    
+    # Style
+    - misspell      # Find commonly misspelled English words in comments
+    
+  disable:
+    - deadcode      # Deprecated, replaced by unused
+    - varcheck      # Deprecated, replaced by unused
+    - structcheck   # Deprecated, replaced by unused
+    - golint        # Deprecated, replaced by revive
 
 issues:
+  exclude-use-default: false
   exclude-rules:
+    # Exclude some linters from running on tests files
     - path: _test\.go
       linters:
         - errcheck
+    
+    # Allow package comment to be missing in main packages
+    - path: cmd/
+      text: "package-comments"
+      linters:
+        - revive
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - revive
+      severity: warning
