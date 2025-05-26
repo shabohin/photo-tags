@@ -5,11 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
-	"github.com/shabohin/photo-tags/services/analyzer/internal/mocks"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/mocks"
 )
 
 func TestNewImageAnalyzer(t *testing.T) {

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
-	"github.com/sirupsen/logrus"
 )
 
 type MessageProcessorService struct {

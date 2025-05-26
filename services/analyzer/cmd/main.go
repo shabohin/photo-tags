@@ -1,27 +1,27 @@
 package main
 
 import (
-"log"
-"os"
+	"log"
+	"os"
 
-"github.com/shabohin/photo-tags/services/analyzer/internal/app"
-"github.com/shabohin/photo-tags/services/analyzer/internal/config"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/app"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 )
 
 func main() {
-// Load configuration
-cfg := config.New()
+	// Load configuration
+	cfg := config.New()
 
-// Initialize application
-application, err := app.New(cfg)
-if err != nil {
-log.Fatalf("Failed to initialize application: %v", err)
-}
+	// Initialize application
+	application, err := app.New(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
 
-// Start the application
-if err := application.Start(); err != nil {
-application.Shutdown()
-log.Fatalf("Application error: %v", err)
-os.Exit(1)
-}
+	// Start the application
+	if err := application.Start(); err != nil {
+		application.Shutdown()
+		log.Fatalf("Application error: %v", err)
+		os.Exit(1)
+	}
 }

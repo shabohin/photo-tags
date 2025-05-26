@@ -1,14 +1,17 @@
 {
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
-        "--fast",
-        "--timeout=5m"
+        "--path-mode=abs",
+        "--fast-only"
     ],
     "go.lintOnSave": "package",
-    "go.formatTool": "goimports",
+    "go.formatTool": "custom",
+    "go.alternateTools": {
+        "customFormatter": "golangci-lint"
+    },
     "go.formatFlags": [
-        "-local",
-        "github.com/shabohin/photo-tags"
+        "fmt",
+        "--stdin"
     ],
     "go.useLanguageServer": true,
     "go.toolsManagement.autoUpdate": true,

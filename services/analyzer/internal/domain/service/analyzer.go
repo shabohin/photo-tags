@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/sirupsen/logrus"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 )
 
 type ImageAnalyzerService struct {

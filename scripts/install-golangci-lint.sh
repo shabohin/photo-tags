@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to install golangci-lint
+# Script to install golangci-lint v2 (latest)
 # Can be called directly or via make install-tools
 
 # Set colors for output
@@ -9,9 +9,9 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-GOLANGCI_LINT_VERSION="v1.55.2"
+GOLANGCI_LINT_VERSION="v2.1.6"
 
-echo -e "${YELLOW}Installing golangci-lint...${NC}"
+echo -e "${YELLOW}Installing golangci-lint ${GOLANGCI_LINT_VERSION}...${NC}"
 
 # Check if golangci-lint is already installed
 if command -v golangci-lint &> /dev/null; then
@@ -35,6 +35,7 @@ if [[ "$OS" == "darwin" ]]; then
         brew install golangci-lint
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}golangci-lint installed successfully via Homebrew!${NC}"
+            golangci-lint version
             exit 0
         fi
     fi
@@ -44,6 +45,7 @@ elif [[ "$OS" == "linux" ]]; then
         sudo apt-get update && sudo apt-get install -y golangci-lint
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}golangci-lint installed successfully via apt!${NC}"
+            golangci-lint version
             exit 0
         fi
     fi

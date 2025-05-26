@@ -35,10 +35,15 @@ lint-fix: ## Run linter with auto-fix
 	@echo "$(GREEN)Linting completed with auto-fix!$(RESET)"
 
 .PHONY: fmt
-fmt: ## Format all Go files
-	@echo "$(YELLOW)Formatting Go files...$(RESET)"
-	@find . -name "*.go" -not -path "./vendor/*" -exec gofmt -w {} \;
-	@find . -name "*.go" -not -path "./vendor/*" -exec goimports -w -local github.com/shabohin/photo-tags {} \;
+fmt: ## Format all Go files using golangci-lint v2
+	@echo "$(YELLOW)Formatting Go files with golangci-lint...$(RESET)"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint fmt; \
+	else \
+		echo "$(YELLOW)golangci-lint not found, using fallback...$(RESET)"; \
+		find . -name "*.go" -not -path "./vendor/*" -exec gofmt -w {} \;; \
+		find . -name "*.go" -not -path "./vendor/*" -exec goimports -w -local github.com/shabohin/photo-tags {} \;; \
+	fi
 	@echo "$(GREEN)Go files formatted!$(RESET)"
 
 .PHONY: test
@@ -94,6 +99,16 @@ install-tools: ## Install development tools
 	@echo "$(YELLOW)Installing development tools...$(RESET)"
 	@./scripts/install-golangci-lint.sh
 	@echo "$(GREEN)Development tools installed!$(RESET)"
+
+.PHONY: migrate-config
+migrate-config: ## Migrate golangci-lint config from v1 to v2
+	@echo "$(YELLOW)Migrating golangci-lint configuration...$(RESET)"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint migrate --format yaml; \
+		echo "$(GREEN)Configuration migrated to v2!$(RESET)"; \
+	else \
+		echo "$(RED)golangci-lint not found. Run 'make install-tools' first.$(RESET)"; \
+	fi
 
 .PHONY: deps
 deps: ## Download and tidy dependencies

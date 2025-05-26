@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	pkgstorage "github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/sirupsen/logrus"
+
+	pkgstorage "github.com/shabohin/photo-tags/pkg/storage"
 )
 
 type Config struct {

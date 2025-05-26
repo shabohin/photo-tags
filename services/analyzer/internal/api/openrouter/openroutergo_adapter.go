@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/eduardolat/openroutergo"
+
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 )
 

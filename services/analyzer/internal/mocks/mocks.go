@@ -3,8 +3,9 @@ package mocks
 import (
 	"context"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 )
 
 // MockMinioClient mock for MinIO client

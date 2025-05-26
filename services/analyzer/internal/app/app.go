@@ -8,13 +8,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter/openroutergo_adapter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
-	"github.com/sirupsen/logrus"
 )
 
 type App struct {

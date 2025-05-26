@@ -1,84 +1,55 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: true
   modules-download-mode: readonly
-  skip-dirs:
-    - vendor
-    - .git
-
-output:
-  format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  
-  govet:
-    check-shadowing: true
-  
-  gofmt:
-    simplify: true
-  
-  goimports:
-    local-prefixes: github.com/shabohin/photo-tags
-  
-  revive:
-    severity: warning
-    rules:
-      - name: exported
-        severity: warning
-      - name: package-comments
-        severity: warning
+  go: '1.24'
 
 linters:
+  default: standard
   enable:
-    # Basic linters
-    - errcheck      # Check for unchecked errors
-    - gosimple      # Simplify code
-    - govet         # Vet examines Go source code
-    - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Go static analysis
-    - typecheck     # Type checking
-    - unused        # Check for unused constants, variables, functions and types
+    - misspell
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
     
-    # Formatting
-    - gofmt         # Check whether code was gofmt-ed
-    - goimports     # Check import statements are formatted well
+    govet:
+      enable:
+        - shadow
     
-    # Code quality
-    - revive        # Fast, configurable, extensible, flexible, and beautiful linter
-    
-    # Style
-    - misspell      # Find commonly misspelled English words in comments
-    
-  disable:
-    - deadcode      # Deprecated, replaced by unused
-    - varcheck      # Deprecated, replaced by unused
-    - structcheck   # Deprecated, replaced by unused
-    - golint        # Deprecated, replaced by revive
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          severity: warning
+  
+  exclusions:
+    paths:
+      - vendor
+      - .git
+    rules:
+      # Exclude some linters from running on tests files
+      - path: '_test\.go'
+        linters:
+          - errcheck
+    generated: disable
 
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - errcheck
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
     
-    # Allow package comment to be missing in main packages
-    - path: cmd/
-      text: "package-comments"
-      linters:
-        - revive
-
-  max-issues-per-linter: 0
-  max-same-issues: 0
+    goimports:
+      local-prefixes: 
+        - github.com/shabohin/photo-tags
 
 severity:
-  default-severity: error
+  default: error
   rules:
     - linters:
         - revive
