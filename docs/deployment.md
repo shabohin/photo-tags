@@ -343,7 +343,7 @@ For production environments, consider these additional steps:
 # Create diagnostic package
 mkdir -p diagnostics
 docker ps > diagnostics/containers.txt
-docker-compose -f docker/docker-compose.yml logs > diagnostics/compose-logs.txt
+docker compose -f docker/docker-compose.yml logs > diagnostics/compose-logs.txt
 docker inspect gateway > diagnostics/gateway-inspect.txt
 docker inspect analyzer > diagnostics/analyzer-inspect.txt
 docker inspect processor > diagnostics/processor-inspect.txt

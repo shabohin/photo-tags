@@ -3,7 +3,7 @@
 # Variables
 GOCMD = go
 GOLANGCI_LINT = golangci-lint
-DOCKER_COMPOSE = docker-compose
+DOCKER_COMPOSE = docker compose
 
 # Colors for output
 GREEN := $(shell tput -Txterm setaf 2)

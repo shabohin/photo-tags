@@ -409,7 +409,7 @@ pkg/
 Use Docker Compose for local development:
 
 ```bash
-docker-compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### Staging Environment
