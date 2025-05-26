@@ -67,6 +67,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, 500, cfg.OpenRouter.MaxTokens)
 	assert.Equal(t, 0.7, cfg.OpenRouter.Temperature)
 	assert.Equal(t, "Generate title, description and keywords for this image. Return strictly in JSON format with fields 'title', 'description' and 'keywords'.", cfg.OpenRouter.Prompt)
+	assert.Equal(t, false, cfg.OpenRouter.UseOpenRouterGoAdapter)
 
 	assert.Equal(t, "info", cfg.Log.Level)
 	assert.Equal(t, "json", cfg.Log.Format)
@@ -87,6 +88,7 @@ func TestNew(t *testing.T) {
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("LOG_FORMAT", "text")
 	os.Setenv("WORKER_CONCURRENCY", "5")
+	os.Setenv("USE_OPENROUTERGO_ADAPTER", "true")
 
 	cfg = New()
 	assert.Equal(t, "amqp://user:pass@localhost:5672/", cfg.RabbitMQ.URL)
@@ -99,6 +101,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, 0.5, cfg.OpenRouter.Temperature)
 	assert.Equal(t, "debug", cfg.Log.Level)
 	assert.Equal(t, "text", cfg.Log.Format)
+	assert.Equal(t, true, cfg.OpenRouter.UseOpenRouterGoAdapter)
 	assert.Equal(t, 5, cfg.Worker.Concurrency)
 }
 

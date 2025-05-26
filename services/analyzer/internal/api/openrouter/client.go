@@ -1,6 +1,18 @@
 package openrouter
 
 import (
+	"context"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
+)
+
+type OpenRouterClient interface {
+	AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error)
+}
+
+package openrouter
+
+import (
 	"bytes"
 	"context"
 	"encoding/base64"

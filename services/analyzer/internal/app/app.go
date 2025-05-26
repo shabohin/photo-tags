@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter/openroutergo_adapter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
@@ -48,15 +49,26 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	// Initialize OpenRouter client
-	openRouterClient := openrouter.NewClient(
-		cfg.OpenRouter.APIKey,
-		cfg.OpenRouter.Model,
-		cfg.OpenRouter.MaxTokens,
-		cfg.OpenRouter.Temperature,
-		cfg.OpenRouter.Prompt,
-		logger,
-	)
+	var openRouterClient openrouter.OpenRouterClient
+	if cfg.OpenRouter.UseOpenRouterGoAdapter {
+		openRouterClient = openroutergo_adapter.NewOpenRouterGoAdapter(
+			cfg.OpenRouter.APIKey,
+			cfg.OpenRouter.Model,
+			cfg.OpenRouter.MaxTokens,
+			cfg.OpenRouter.Temperature,
+			cfg.OpenRouter.Prompt,
+			logger,
+		)
+	} else {
+		openRouterClient = openrouter.NewClient(
+			cfg.OpenRouter.APIKey,
+			cfg.OpenRouter.Model,
+			cfg.OpenRouter.MaxTokens,
+			cfg.OpenRouter.Temperature,
+			cfg.OpenRouter.Prompt,
+			logger,
+		)
+	}
 
 	// Initialize RabbitMQ publisher
 	publisher, err := rabbitmq.NewPublisher(

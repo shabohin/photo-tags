@@ -31,11 +31,12 @@ type Config struct {
 	}
 
 	OpenRouter struct {
-		APIKey      string
-		Model       string
-		MaxTokens   int
-		Temperature float64
-		Prompt      string
+		APIKey                 string
+		Model                  string
+		MaxTokens              int
+		Temperature            float64
+		Prompt                 string
+		UseOpenRouterGoAdapter bool
 	}
 
 	Log struct {
@@ -77,6 +78,7 @@ func New() *Config {
 	cfg.OpenRouter.MaxTokens = getEnvAsInt("OPENROUTER_MAX_TOKENS", 500)
 	cfg.OpenRouter.Temperature = getEnvAsFloat("OPENROUTER_TEMPERATURE", 0.7)
 	cfg.OpenRouter.Prompt = getEnv("OPENROUTER_PROMPT", "Generate title, description and keywords for this image. Return strictly in JSON format with fields 'title', 'description' and 'keywords'.")
+	cfg.OpenRouter.UseOpenRouterGoAdapter = getEnvAsBool("USE_OPENROUTERGO_ADAPTER", false)
 
 	// Log Config
 	cfg.Log.Level = getEnv("LOG_LEVEL", "info")
