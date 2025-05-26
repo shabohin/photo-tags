@@ -190,7 +190,7 @@ Robust error handling includes:
    ./scripts/install-golangci-lint.sh
    
    # Or manually via Go
-   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
    
    # Or via Homebrew (macOS)
    brew install golangci-lint
