@@ -336,6 +336,56 @@ func (s *InMemoryStorage) DownloadFile(path string) ([]byte, error) {
 -   Use deterministic responses for consistent testing
 -   Test with various image types
 
+### Analyzer Service Testing
+
+This section details the specific testing strategy for the Analyzer Service.
+
+**Scope:**
+
+-   Verify the core logic of receiving messages, analyzing images (mocked AI interaction), and publishing results.
+-   Ensure correct interaction with RabbitMQ for message consumption and publishing.
+-   Validate image download functionality from MinIO.
+-   Confirm configuration loading and parsing.
+
+**Unit Tests:**
+
+-   **Target Components:**
+    -   `internal/config`: Loading and validation of service configuration.
+    -   `internal/domain/service/analyzer`: Core image analysis logic. Dependencies (MinIO Client, OpenRouter Client) will be mocked using `testify/mock`.
+    -   `internal/domain/service/processor`: Message processing logic. Dependencies (Analyzer Service, RabbitMQ Publisher) will be mocked.
+    -   `internal/api/openrouter/client`: Parsing of responses from the (mocked) OpenRouter API.
+-   **Frameworks:** Standard Go `testing` package, `stretchr/testify/assert`, and `stretchr/testify/mock`.
+-   **Goal:** Isolate and verify the logic of each component.
+
+**Integration Tests:**
+
+-   **Target Interactions:**
+    -   **RabbitMQ:** Verify that the service correctly consumes messages from the `image_upload` queue and publishes results to the `metadata_generated` queue.
+    -   **MinIO:** Verify that the service can download image files from a MinIO instance based on messages received.
+    -   **Workflow:** Test the flow: receive message -> download image -> process (mocked analysis) -> publish result.
+-   **External Dependencies:** RabbitMQ and MinIO will be run using Docker Compose for the test environment.
+-   **Mocking:** The OpenRouter API interaction will be mocked at this level to avoid external calls and costs.
+-   **Goal:** Verify the interaction between the service and its direct infrastructure dependencies (message queue, storage).
+
+**End-to-End Tests:**
+
+-   E2E tests covering the full flow including the Analyzer Service are defined in the general E2E strategy (see section 3).
+
+**Code Coverage:**
+
+-   The target code coverage for the Analyzer Service is **>80%**, consistent with the overall project goal.
+
+**Running Tests:**
+
+-   All tests for the Analyzer service can be run using:
+    ```bash
+    go test ./services/analyzer/...
+    ```
+-   Or using the project script:
+    ```bash
+    ./scripts/test.sh
+    ```
+
 ## Troubleshooting Tests
 
 ### Common Issues

@@ -17,6 +17,20 @@ import (
 	"github.com/shabohin/photo-tags/services/gateway/internal/telegram"
 )
 
+func retry(attempts int, delay time.Duration, logger *logging.Logger, operationName string, fn func() error) error {
+	for i := 1; i <= attempts; i++ {
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		logger.Error(fmt.Sprintf("Attempt %d/%d failed for %s", i, attempts, operationName), err)
+		if i < attempts {
+			time.Sleep(delay)
+		}
+	}
+	return fmt.Errorf("all %d attempts failed for %s", attempts, operationName)
+}
+
 func main() {
 	fmt.Println("Starting Gateway Service...")
 	log.Println("Gateway Service is up and running")
@@ -97,33 +111,49 @@ func main() {
 
 // initializeDependencies initializes MinIO and RabbitMQ clients
 func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
-	// Initialize MinIO client
+	var minioClient storage.MinIOInterface
+	var rabbitmqClient messaging.RabbitMQInterface
+
 	logger.Info("Initializing MinIO client", map[string]interface{}{
 		"endpoint": cfg.MinIOEndpoint,
 		"use_ssl":  cfg.MinIOUseSSL,
 	})
 
-	minioClient, err := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
+	err := retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
+		client, err := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
+		if err != nil {
+			return err
+		}
+		minioClient = client
+		return nil
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create MinIO client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create MinIO client after retries: %w", err)
 	}
 
-	// Check MinIO connection
-	if err := minioClient.EnsureBucketExists(ctx, storage.BucketOriginal); err != nil {
-		return nil, nil, fmt.Errorf("failed to check MinIO connection: %w", err)
+	err = retry(5, 2*time.Second, logger, "MinIO bucket check", func() error {
+		return minioClient.EnsureBucketExists(ctx, storage.BucketOriginal)
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to check MinIO connection after retries: %w", err)
 	}
 
-	// Initialize RabbitMQ client
 	logger.Info("Initializing RabbitMQ client", map[string]interface{}{
 		"url": cfg.RabbitMQURL,
 	})
 
-	rabbitmqClient, err := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
+	err = retry(5, 2*time.Second, logger, "RabbitMQ client creation", func() error {
+		client, err := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
+		if err != nil {
+			return err
+		}
+		rabbitmqClient = client
+		return nil
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create RabbitMQ client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create RabbitMQ client after retries: %w", err)
 	}
 
-	// Declare necessary queues
 	logger.Info("Declaring RabbitMQ queues", nil)
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageUpload); err != nil {
