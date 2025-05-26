@@ -204,56 +204,72 @@ Our CI pipeline has been streamlined to use the same make commands that develope
 
 -   Consistent workflow between local development and CI
 -   Centralized logic through the Makefile
--   Only 3 jobs total (reduced from 15 jobs previously)
+-   Only 4 jobs total (clearly separating lint and test stages)
 -   No matrix strategy needed, reducing complexity
 
 ### CI Workflow Jobs
 
 The CI workflow consists of the following jobs:
 
-1. **Quality Checks**: Runs `make check` for all modules
+1. **Lint**: Runs `make lint` for all modules
 
-    - Combines linting and testing into a single job
+    - Focused exclusively on code quality checks
+    - Runs golangci-lint with project-specific configuration
+    - Ensures consistent code style and detects common issues
+
+2. **Test**: Runs `make test` for all modules
+
     - Executes unit tests with race detection
-    - Runs golangci-lint for code quality
     - Generates and uploads coverage reports to Codecov
+    - Validates functionality without mixing with style concerns
 
-2. **Build**: Uses `make build` for all services
+3. **Build**: Uses `make build` for all services
 
-    - Only runs after quality checks succeed
+    - Only runs after both lint and test jobs succeed
     - Builds all services using Docker Compose
     - Ensures consistent build process with local development
 
-3. **Security**: Runs security scanning
+4. **Security**: Runs security scanning
     - Uses Gosec to identify security issues
     - Scans each service independently
+    - Only runs after both lint and test jobs succeed
 
 ### Running CI Checks Locally
 
 You can run the same checks locally that are executed in CI, using the identical make commands:
 
 ```bash
-# Run quality checks (linting + tests) on all modules
-make check
+# Run linting checks on all modules
+make lint
+
+# Run tests with coverage on all modules
+make test
 
 # Build all services
 make build
 
-# Run individual components manually if needed
-make lint
-make test
+# Run lint and test in sequence (previous approach)
+make check
 ```
+
+Running lint and test separately allows you to:
+
+-   Get faster feedback on code style issues before running tests
+-   Identify the specific type of failure more quickly
+-   Match the exact CI pipeline behavior locally
 
 This consistency between local and CI environments ensures that if your code passes checks locally, it should also pass in the CI pipeline.
 
-### Benefits of the Simplified Approach
+### Benefits of the Separated Jobs Approach
 
-The new CI approach provides several advantages:
+The new CI approach with separate lint and test jobs provides several advantages:
 
 -   **Consistent Developer Experience**: The same commands used locally now run in CI
--   **Reduced Maintenance**: Fewer jobs to maintain and configure
+-   **Clearer Feedback**: Immediately see whether a failure is from linting or tests
+-   **Parallel Execution**: Lint and test jobs run in parallel, potentially reducing overall pipeline time
+-   **Better Visibility**: Dashboard clearly shows which specific check failed
+-   **Granular Control**: Developers can fix linting issues without waiting for tests to complete
 -   **Centralized Configuration**: Logic consolidated in Makefile and associated scripts
--   **Faster Execution**: Fewer parallel jobs means less overhead and faster overall pipeline completion
 -   **Easier Troubleshooting**: When an issue occurs, it's easier to reproduce locally with the same commands
 
 ### Adding a New Module to CI
