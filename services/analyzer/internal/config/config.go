@@ -11,15 +11,9 @@ import (
 )
 
 type Config struct {
-	MinIO struct {
-		Endpoint        string
-		AccessKey       string
-		SecretKey       string
-		OriginalBucket  string
-		DownloadTimeout time.Duration
-		ConnectDelay    time.Duration
-		ConnectAttempts int
-		UseSSL          bool
+	Log struct {
+		Level  string
+		Format string
 	}
 
 	RabbitMQ struct {
@@ -31,11 +25,6 @@ type Config struct {
 		PrefetchCount     int
 	}
 
-	Log struct {
-		Level  string
-		Format string
-	}
-
 	OpenRouter struct {
 		APIKey                 string
 		Model                  string
@@ -43,6 +32,17 @@ type Config struct {
 		Temperature            float64
 		MaxTokens              int
 		UseOpenRouterGoAdapter bool
+	}
+
+	MinIO struct {
+		Endpoint        string
+		AccessKey       string
+		SecretKey       string
+		OriginalBucket  string
+		DownloadTimeout time.Duration
+		ConnectDelay    time.Duration
+		ConnectAttempts int
+		UseSSL          bool
 	}
 
 	Worker struct {
