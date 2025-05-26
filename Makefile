@@ -87,3 +87,28 @@ version: ## Show Go and tool versions
 	else \
 		echo "golangci-lint: $(RED)not installed$(RESET)"; \
 	fi
+##@ Development
+
+.PHONY: install-tools
+install-tools: ## Install development tools
+	@echo "$(YELLOW)Installing development tools...$(RESET)"
+	@./scripts/install-golangci-lint.sh
+	@echo "$(GREEN)Development tools installed!$(RESET)"
+
+.PHONY: deps
+deps: ## Download and tidy dependencies
+	@echo "$(YELLOW)Downloading dependencies...$(RESET)"
+	@cd services/gateway && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd services/analyzer && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd services/processor && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd pkg && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@echo "$(GREEN)Dependencies updated successfully!$(RESET)"
+
+.PHONY: deps-clean
+deps-clean: ## Clean and reinstall dependencies
+	@echo "$(YELLOW)Cleaning dependencies...$(RESET)"
+	@cd services/gateway && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd services/analyzer && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd services/processor && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@cd pkg && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
+	@echo "$(GREEN)Dependencies cleaned and reinstalled!$(RESET)"

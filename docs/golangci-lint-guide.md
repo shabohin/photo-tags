@@ -1,18 +1,18 @@
-# Руководство по golangci-lint для Photo Tags Service
+# golangci-lint Guide for Photo Tags Service
 
-## Установка
+## Installation
 
-1. **Автоматическая установка** (рекомендуется):
+1. **Automatic installation** (recommended):
    ```bash
    ./scripts/install-golangci-lint.sh
    ```
 
-2. **Через Makefile**:
+2. **Via Makefile**:
    ```bash
    make install-tools
    ```
 
-3. **Вручную**:
+3. **Manual installation**:
    ```bash
    # Via Go
    go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
@@ -21,50 +21,50 @@
    brew install golangci-lint
    ```
 
-## Использование
+## Usage
 
-### Основные команды
+### Basic Commands
 
 ```bash
-# Запуск линтера на всех модулях
+# Run linter on all modules
 make lint
 
-# Запуск линтера с автоисправлением
+# Run linter with auto-fix
 make lint-fix
 
-# Форматирование кода
+# Format code
 make fmt
 
-# Полная проверка (форматирование + линтинг + тесты)
+# Full pre-commit check (format + lint + tests)
 make pre-commit
 
-# Проверка всех модулей (тесты + линтинг)
+# Run all quality checks (tests + linting)
 make check
 ```
 
-### Работа с отдельными сервисами
+### Working with Individual Services
 
 ```bash
-# Линтинг конкретного сервиса
+# Lint specific service
 cd services/gateway
 golangci-lint run
 
-# С автоисправлением
+# With auto-fix
 cd services/gateway
 golangci-lint run --fix
 
-# Только определенные линтеры
+# Only specific linters
 cd services/gateway
 golangci-lint run --enable=errcheck,govet
 ```
 
-## Настройка IDE
+## IDE Integration
 
 ### VS Code
 
-1. Установите расширение Go
-2. Настройки уже добавлены в `.vscode/settings.json`
-3. Линтер будет запускаться автоматически при сохранении
+1. Install Go extension
+2. Settings are already configured in `.vscode/settings.json`
+3. Linter will run automatically on save
 
 ### GoLand/IntelliJ IDEA
 
@@ -74,133 +74,133 @@ golangci-lint run --enable=errcheck,govet
 
 ## Git Hooks
 
-Установка pre-commit хука:
+Install pre-commit hook:
 
 ```bash
 make install-hooks
 ```
 
-Хук будет запускать:
-1. Форматирование кода (gofmt + goimports)
-2. Линтинг (golangci-lint)
-3. Тесты (go test)
+The hook will run:
+1. Code formatting (gofmt + goimports)
+2. Linting (golangci-lint)
+3. Tests (go test)
 
-## Конфигурация
+## Configuration
 
-Основная конфигурация в `.golangci.yml`:
+Main configuration in `.golangci.yml`:
 
-- **Таймаут**: 5 минут
-- **Включенные линтеры**:
-  - errcheck (проверка необработанных ошибок)
-  - gosimple (упрощение кода)
-  - govet (статический анализ)
-  - ineffassign (неиспользуемые присваивания)
-  - staticcheck (расширенный статический анализ)
-  - gofmt/goimports (форматирование)
-  - revive (стиль кода)
-  - misspell (орфография в комментариях)
+- **Timeout**: 5 minutes
+- **Enabled linters**:
+  - errcheck (check for unhandled errors)
+  - gosimple (code simplification)
+  - govet (static analysis)
+  - ineffassign (unused assignments)
+  - staticcheck (extended static analysis)
+  - gofmt/goimports (formatting)
+  - revive (code style)
+  - misspell (spelling in comments)
 
-## Частые проблемы и решения
+## Common Issues and Solutions
 
-### 1. Ошибки errcheck
+### 1. errcheck Errors
 
 ```go
-// Плохо
+// Bad
 file.Close()
 
-// Хорошо
+// Good
 if err := file.Close(); err != nil {
     log.Printf("Failed to close file: %v", err)
 }
 
-// Или если ошибка не критична
+// Or if error is not critical
 _ = file.Close()
 ```
 
-### 2. Отсутствие комментариев к экспортируемым функциям
+### 2. Missing Comments for Exported Functions
 
 ```go
-// Плохо
+// Bad
 func ProcessImage() {}
 
-// Хорошо
+// Good
 // ProcessImage processes the uploaded image and generates metadata
 func ProcessImage() {}
 ```
 
-### 3. Проблемы с импортами
+### 3. Import Issues
 
 ```bash
-# Автоисправление импортов
+# Auto-fix imports
 make fmt
 
-# Или вручную
+# Or manually
 goimports -w -local github.com/shabohin/photo-tags .
 ```
 
-### 4. Shadow переменных
+### 4. Shadow Variables
 
 ```go
-// Плохо
+// Bad
 if err != nil {
-    client, err := NewClient() // переменная err затеняется
+    client, err := NewClient() // variable err is shadowed
 }
 
-// Хорошо
+// Good
 if err != nil {
     client, clientErr := NewClient()
     if clientErr != nil {
-        // обработка ошибки
+        // handle error
     }
 }
 ```
 
-## Интеграция с CI/CD
+## CI/CD Integration
 
-GitHub Actions автоматически запускает линтинг для каждого PR:
-- Проверяет все модули
-- Блокирует мерж при наличии ошибок
-- Показывает результаты в интерфейсе GitHub
+GitHub Actions automatically runs linting for each PR:
+- Checks all modules
+- Blocks merge if errors found
+- Shows results in GitHub UI
 
-## Полезные команды
+## Useful Commands
 
 ```bash
-# Показать все доступные линтеры
+# Show all available linters
 golangci-lint linters
 
-# Запустить только определенные линтеры
+# Run only specific linters
 golangci-lint run --enable=errcheck,govet,staticcheck
 
-# Исключить определенные файлы
+# Exclude specific files
 golangci-lint run --skip-files=".*_test.go"
 
-# Показать версию
+# Show version
 golangci-lint version
 
-# Помощь
+# Help
 golangci-lint help
 ```
 
-## Советы по производительности
+## Performance Tips
 
-1. **Используйте кэш**: golangci-lint автоматически кэширует результаты
-2. **Запускайте только измененные файлы**: `golangci-lint run --new-from-rev=HEAD~1`
-3. **Настройте исключения**: добавьте правила в `.golangci.yml` для известных проблем
-4. **Используйте fast режим**: `golangci-lint run --fast` (для разработки)
+1. **Use cache**: golangci-lint automatically caches results
+2. **Run only changed files**: `golangci-lint run --new-from-rev=HEAD~1`
+3. **Configure exclusions**: add rules in `.golangci.yml` for known issues
+4. **Use fast mode**: `golangci-lint run --fast` (for development)
 
-## Обновление
+## Updates
 
 ```bash
-# Проверить текущую версию
+# Check current version
 golangci-lint version
 
-# Обновить до последней версии
+# Update to latest version
 ./scripts/install-golangci-lint.sh
 ```
 
 ---
 
-**Полезные ссылки:**
-- [Официальная документация golangci-lint](https://golangci-lint.run/)
-- [Список всех линтеров](https://golangci-lint.run/usage/linters/)
-- [Конфигурация](https://golangci-lint.run/usage/configuration/)
+**Useful Links:**
+- [Official golangci-lint Documentation](https://golangci-lint.run/)
+- [List of All Linters](https://golangci-lint.run/usage/linters/)
+- [Configuration Guide](https://golangci-lint.run/usage/configuration/)
