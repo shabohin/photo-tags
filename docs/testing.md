@@ -213,12 +213,23 @@ go test -race ./...
 
 ### CI/CD Testing
 
-Tests in the CI/CD pipeline verify code quality before integration:
+Tests in the CI/CD pipeline verify code quality before integration using a matrix strategy for our multi-module project structure:
 
--   GitHub Actions runs tests on every commit
+-   GitHub Actions runs tests on every commit for each module independently
+-   Matrix-based execution allows parallel testing across modules
+-   Module-specific working directories ensure proper isolation
 -   Test failures prevent merging
--   Coverage reports highlight untested code
+-   Coverage reports are generated per module and then aggregated
+-   Each module's coverage is tracked separately with specific flags
 -   Performance benchmarks track changes over time
+
+The matrix approach provides several benefits for our multi-module project:
+
+-   **Improved Performance**: Parallel execution reduces overall CI runtime
+-   **Better Isolation**: Issues in one module don't affect testing of other modules
+-   **Independent Caching**: Each module has its own dependency cache
+-   **Targeted Feedback**: Failures are clearly attributed to specific modules
+-   **Scalable Structure**: Easy to add new modules to the CI pipeline
 
 ## Test Data Management
 

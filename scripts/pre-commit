@@ -55,35 +55,68 @@ else
     echo -e "${YELLOW}Warning: goimports not found, skipping import check${NC}"
 fi
 
-# Run go vet
-echo -e "${YELLOW}Running go vet...${NC}"
-if ! go vet ./...; then
+# Define Go modules
+GO_MODULES=("services/analyzer" "services/gateway" "services/processor" "pkg")
+
+# Function to run command in each module
+run_in_modules() {
+    local cmd="$1"
+    local description="$2"
+    local success_count=0
+    local total_count=${#GO_MODULES[@]}
+
+    echo -e "${YELLOW}$description${NC}"
+
+    for module in "${GO_MODULES[@]}"; do
+        if [ -d "$module" ] && [ -f "$module/go.mod" ]; then
+            echo -e "${YELLOW}  → Running in $module...${NC}"
+            cd "$module"
+            if eval "$cmd"; then
+                ((success_count++))
+                echo -e "${GREEN}    ✓ $module passed${NC}"
+            else
+                echo -e "${RED}    ✗ $module failed${NC}"
+                cd - > /dev/null
+                return 1
+            fi
+            cd - > /dev/null
+        else
+            echo -e "${YELLOW}    Warning: $module not found or missing go.mod${NC}"
+        fi
+    done
+
+    if [ $success_count -eq $total_count ]; then
+        echo -e "${GREEN}✓ All modules passed ($success_count/$total_count)${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Some modules failed ($success_count/$total_count)${NC}"
+        return 1
+    fi
+}
+
+# Run go vet in all modules
+if ! run_in_modules "go vet ./..." "Running go vet in all modules..."; then
     echo -e "${RED}go vet found issues${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ go vet passed${NC}"
 
-# Run golangci-lint if available
-echo -e "${YELLOW}Running golangci-lint...${NC}"
+# Run golangci-lint in all modules if available
 if command -v golangci-lint >/dev/null 2>&1; then
-    if ! golangci-lint run --timeout=5m; then
+    if ! run_in_modules "golangci-lint run --timeout=5m" "Running golangci-lint in all modules..."; then
         echo -e "${RED}golangci-lint found issues${NC}"
-        echo -e "${YELLOW}Run 'make lint-fix' to auto-fix issues or 'make lint' to see details${NC}"
+        echo -e "${YELLOW}Run './scripts/lint.sh' to see details${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✓ golangci-lint passed${NC}"
 else
     echo -e "${YELLOW}Warning: golangci-lint not found, skipping lint check${NC}"
     echo -e "${YELLOW}Install it with: ./scripts/install-golangci-lint.sh${NC}"
 fi
 
-# Run tests
-echo -e "${YELLOW}Running tests...${NC}"
-if ! go test -race ./...; then
+# Run tests in all modules
+if ! run_in_modules "go test -race ./..." "Running tests in all modules..."; then
     echo -e "${RED}Tests failed${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ All tests passed${NC}"
 
 echo
 echo -e "${GREEN}All pre-commit checks passed! ✨${NC}"

@@ -1,95 +1,120 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
     push:
-        branches: ['**']
+        branches: [main, develop]
     pull_request:
-        branches: [main]
-
-env:
-  GO_VERSION: '1.24'
-  GOLANGCI_LINT_VERSION: 'v2.1.6'
+        branches: [main, develop]
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Set up Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: ${{ env.GO_VERSION }}
-                  cache: true
-
-            - name: Cache Go modules
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cache/go-build
-                      ~/go/pkg/mod
-                  key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-                  restore-keys: |
-                      ${{ runner.os }}-go-
-
-            - name: Download dependencies
-              run: |
-                  cd services/gateway && go mod download
-                  cd ../analyzer && go mod download  
-                  cd ../processor && go mod download
-                  cd ../../pkg && go mod download
-
-            - name: Test Gateway
-              run: cd services/gateway && go test -race -v -coverprofile=coverage.out ./...
-
-            - name: Test Analyzer
-              run: cd services/analyzer && go test -race -v -coverprofile=coverage.out ./...
-
-            - name: Test Processor
-              run: cd services/processor && go test -race -v -coverprofile=coverage.out ./...
-
-            - name: Test Shared Packages
-              run: cd pkg && go test -race -v -coverprofile=coverage.out ./...
-
-            - name: Upload coverage reports to Codecov
-              uses: codecov/codecov-action@v4
-              with:
-                  files: |
-                      ./services/gateway/coverage.out
-                      ./services/analyzer/coverage.out
-                      ./services/processor/coverage.out
-                      ./pkg/coverage.out
-                  fail_ci_if_error: false
-                  verbose: true
-
     lint:
+        name: Lint
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                module:
+                    - services/analyzer
+                    - services/gateway
+                    - services/processor
+                    - pkg
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
 
             - name: Set up Go
               uses: actions/setup-go@v5
               with:
-                  go-version: ${{ env.GO_VERSION }}
+                  go-version-file: ${{ matrix.module }}/go.mod
+                  cache-dependency-path: ${{ matrix.module }}/go.sum
 
-            - name: golangci-lint
+            - name: Run golangci-lint
               uses: golangci/golangci-lint-action@v8
               with:
-                  version: ${{ env.GOLANGCI_LINT_VERSION }}
+                  version: latest
+                  working-directory: ${{ matrix.module }}
                   args: --timeout=5m
 
-    security:
+    test:
+        name: Test
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                module:
+                    - services/analyzer
+                    - services/gateway
+                    - services/processor
+                    - pkg
         steps:
-            - uses: actions/checkout@v4
-            
+            - name: Checkout code
+              uses: actions/checkout@v4
+
             - name: Set up Go
               uses: actions/setup-go@v5
               with:
-                  go-version: ${{ env.GO_VERSION }}
+                  go-version-file: ${{ matrix.module }}/go.mod
+                  cache-dependency-path: ${{ matrix.module }}/go.sum
+
+            - name: Download dependencies
+              working-directory: ${{ matrix.module }}
+              run: go mod download
+
+            - name: Run tests
+              working-directory: ${{ matrix.module }}
+              run: go test -race -coverprofile=coverage.out ./...
+
+            - name: Upload coverage reports
+              uses: codecov/codecov-action@v4
+              with:
+                  file: ${{ matrix.module }}/coverage.out
+                  flags: ${{ matrix.module }}
+                  fail_ci_if_error: false
+
+    build:
+        name: Build
+        runs-on: ubuntu-latest
+        needs: [lint, test]
+        strategy:
+            matrix:
+                service:
+                    - services/analyzer
+                    - services/gateway
+                    - services/processor
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version-file: ${{ matrix.service }}/go.mod
+                  cache-dependency-path: ${{ matrix.service }}/go.sum
+
+            - name: Build service
+              working-directory: ${{ matrix.service }}
+              run: go build -v ./cmd/...
+
+    security:
+        name: Security Scan
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                module:
+                    - services/analyzer
+                    - services/gateway
+                    - services/processor
+                    - pkg
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version-file: ${{ matrix.module }}/go.mod
+
+            - name: Install Gosec
+              run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
 
             - name: Run Gosec Security Scanner
-              uses: securecodewarrior/github-action-gosec@master
-              with:
-                  args: './...'
+              working-directory: ${{ matrix.module }}
+              run: gosec -exclude-dir=vendor ./...
