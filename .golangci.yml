@@ -1,56 +1,62 @@
-version: "2"
+version: '2'
 
 run:
-  timeout: 5m
-  tests: true
-  modules-download-mode: readonly
-  go: '1.24'
+    timeout: 5m
+    tests: true
+    modules-download-mode: readonly
+    go: '1.24'
 
 linters:
-  default: standard
-  enable:
-    - misspell
-  settings:
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-    
-    govet:
-      enable:
-        - shadow
-    
-    revive:
-      severity: warning
-      rules:
-        - name: exported
-          severity: warning
-  
-  exclusions:
-    paths:
-      - vendor
-      - .git
-    rules:
-      # Exclude some linters from running on tests files
-      - path: '_test\.go'
-        linters:
-          - errcheck
-    generated: disable
+    default: standard
+    enable:
+        - misspell
+        - gosec
+    settings:
+        gosec:
+            excludes:
+            config:
+                global:
+                    nosec: true
+        errcheck:
+            check-type-assertions: true
+            check-blank: true
+
+        govet:
+            enable:
+                - shadow
+
+        revive:
+            severity: warning
+            rules:
+                - name: exported
+                  severity: warning
+
+    exclusions:
+        paths:
+            - vendor
+            - .git
+        rules:
+            # Exclude some linters from running on tests files
+            - path: '_test\.go'
+              linters:
+                  - errcheck
+        generated: disable
 
 formatters:
-  enable:
-    - gofmt
-    - goimports
-  settings:
-    gofmt:
-      simplify: true
-    
-    goimports:
-      local-prefixes: 
-        - github.com/shabohin/photo-tags
+    enable:
+        - gofmt
+        - goimports
+    settings:
+        gofmt:
+            simplify: true
+
+        goimports:
+            local-prefixes:
+                - github.com/shabohin/photo-tags
 
 severity:
-  default: error
-  rules:
-    - linters:
-        - revive
-      severity: warning
+    default: error
+    rules:
+        - linters:
+              - revive
+          severity: warning
