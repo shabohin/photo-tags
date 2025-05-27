@@ -13,7 +13,7 @@ import (
 func TestHealthCheck(t *testing.T) {
 	// Setup
 	logger := logging.NewLogger("test")
-	cfg := &config.Config{ServerPort: 8080}
+	cfg := &config.Config{ServerPort: 9003}
 	h := NewHandler(logger, cfg)
 
 	// Create request
@@ -60,7 +60,7 @@ func TestHealthCheck(t *testing.T) {
 func TestSetupRoutes(t *testing.T) {
 	// Setup
 	logger := logging.NewLogger("test")
-	cfg := &config.Config{ServerPort: 8080}
+	cfg := &config.Config{ServerPort: 9003}
 	h := NewHandler(logger, cfg)
 
 	// Create router

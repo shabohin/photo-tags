@@ -61,9 +61,9 @@ docker compose up -d
 # Check if services started successfully
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Services started successfully!${NC}"
-    echo -e "- RabbitMQ UI: ${YELLOW}http://localhost:15672${NC} (user/password)"
+    echo -e "- RabbitMQ UI: ${YELLOW}http://localhost:9100${NC} (user/password)"
     echo -e "- MinIO Console: ${YELLOW}http://localhost:9001${NC} (minioadmin/minioadmin)"
-    echo -e "- Gateway Service: ${YELLOW}http://localhost:8080${NC}"
+    echo -e "- Gateway Service: ${YELLOW}http://localhost:9003${NC}"
 
     echo ""
     echo -e "${GREEN}To view logs:${NC}"

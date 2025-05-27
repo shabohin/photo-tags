@@ -103,9 +103,9 @@ The service handles all technical complexities (model selection, rate limits, re
 
 After startup, you can access the following interfaces:
 
--   **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672) (login: user, password: password)
+-   **RabbitMQ Management**: [http://localhost:9100](http://localhost:9100) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
--   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
+-   **Gateway API**: [http://localhost:9003](http://localhost:9003) (health check available at `/health`)
 
 ## Service Logs
 

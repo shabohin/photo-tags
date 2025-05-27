@@ -33,7 +33,7 @@ echo -e "Waiting for RabbitMQ..."
 RETRY=0
 MAX_RETRY=30
 while [ $RETRY -lt $MAX_RETRY ]; do
-    if curl -s -u user:password http://localhost:15672/api/aliveness-test/%2F | grep -q "\"status\":\"ok\""; then
+    if curl -s -u user:password http://localhost:9100/api/aliveness-test/%2F | grep -q "\"status\":\"ok\""; then
         echo -e "${GREEN}RabbitMQ is ready!${NC}"
         break
     fi
@@ -103,7 +103,7 @@ echo -e "${YELLOW}Setting up RabbitMQ queues...${NC}"
 # Create queues using RabbitMQ HTTP API
 for QUEUE in image_upload metadata_generated image_process image_processed; do
     echo -e "Creating queue: ${QUEUE}"
-    curl -s -u user:password -X PUT "http://localhost:15672/api/queues/%2F/${QUEUE}" \
+    curl -s -u user:password -X PUT "http://localhost:9100/api/queues/%2F/${QUEUE}" \
          -H "Content-Type: application/json" \
          -d '{"durable": true}' > /dev/null
 done
@@ -112,6 +112,6 @@ echo -e "${GREEN}RabbitMQ setup complete. Queues created.${NC}"
 
 echo -e "${GREEN}Environment setup complete!${NC}"
 echo -e "You can now access the services at:"
-echo -e "- Gateway: ${YELLOW}http://localhost:8080/health${NC}"
-echo -e "- RabbitMQ UI: ${YELLOW}http://localhost:15672${NC} (login: user, password: password)"
+echo -e "- Gateway: ${YELLOW}http://localhost:9003/health${NC}"
+echo -e "- RabbitMQ UI: ${YELLOW}http://localhost:9100${NC} (login: user, password: password)"
 echo -e "- MinIO Console: ${YELLOW}http://localhost:9001${NC} (login: minioadmin, password: minioadmin)"

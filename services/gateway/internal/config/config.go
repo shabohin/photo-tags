@@ -27,12 +27,12 @@ type Config struct {
 func LoadConfig() *Config {
 	cfg := &Config{
 		TelegramToken:  getEnv("TELEGRAM_TOKEN", ""),
-		RabbitMQURL:    getEnv("RABBITMQ_URL", "amqp://user:password@localhost:5672/"),
+		RabbitMQURL:    getEnv("RABBITMQ_URL", "amqp://user:password@localhost:9002/"),
 		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
 		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
 		MinIOUseSSL:    getEnvBool("MINIO_USE_SSL", false),
-		ServerPort:     getEnvInt("SERVER_PORT", 8080),
+		ServerPort:     getEnvInt("SERVER_PORT", 9003),
 	}
 
 	return cfg
