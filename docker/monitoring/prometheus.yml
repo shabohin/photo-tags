@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # OpenTelemetry Collector metrics
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:9464']
+
+  # Gateway service metrics
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+    metrics_path: '/metrics'
+
+  # Analyzer service metrics  
+  - job_name: 'analyzer'
+    static_configs:
+      - targets: ['analyzer:8081']
+    metrics_path: '/metrics'
+
+  # Processor service metrics
+  - job_name: 'processor'
+    static_configs:
+      - targets: ['processor:8082']
+    metrics_path: '/metrics'
+
+  # RabbitMQ metrics
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  # MinIO metrics
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    metrics_path: '/minio/v2/metrics/cluster'

@@ -11,6 +11,7 @@ import (
 
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
+	"github.com/shabohin/photo-tags/pkg/observability"
 	"github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 	"github.com/shabohin/photo-tags/services/gateway/internal/handler"
@@ -54,6 +55,30 @@ func main() {
 	// Create logger
 	logger := logging.NewLogger("gateway")
 	logger.Info("Starting Gateway Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
+
+	// Initialize OpenTelemetry tracing
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otlpEndpoint == "" {
+		otlpEndpoint = "localhost:4317"
+	}
+	
+	if err := observability.InitTracing("gateway", "1.0.0", otlpEndpoint); err != nil {
+		logger.Error("Failed to initialize tracing", err)
+		// Continue without tracing - not critical for basic functionality
+	} else {
+		logger.Info("OpenTelemetry tracing initialized", map[string]interface{}{
+			"endpoint": otlpEndpoint,
+		})
+		
+		// Setup graceful tracing shutdown
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := observability.Shutdown(shutdownCtx); err != nil {
+				logger.Error("Failed to shutdown tracing", err)
+			}
+		}()
+	}
 
 	// Initialize dependencies
 	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)

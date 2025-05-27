@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/shabohin/photo-tags/pkg/logging"
+	"github.com/shabohin/photo-tags/pkg/observability"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 )
 
@@ -43,19 +44,23 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// SetupRoutes sets up HTTP routes
+// SetupRoutes sets up HTTP routes with OpenTelemetry middleware
 func (h *Handler) SetupRoutes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Add routes
 	mux.HandleFunc("/health", h.HealthCheck)
+	mux.HandleFunc("/metrics", h.MetricsHandler)
+
+	// Apply OpenTelemetry middleware
+	handler := observability.HTTPMiddleware("gateway")(mux)
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		h.logger.Info(fmt.Sprintf("%s %s", r.Method, r.URL.Path), nil)
 
-		mux.ServeHTTP(w, r)
+		handler.ServeHTTP(w, r)
 		h.logger.Info(fmt.Sprintf("Completed in %v", time.Since(start)), nil)
 	})
 }
@@ -84,4 +89,13 @@ func (h *Handler) StartServer(ctx context.Context) error {
 	defer cancel()
 
 	return server.Shutdown(shutdownCtx)
+}
+
+// MetricsHandler provides Prometheus metrics endpoint
+func (h *Handler) MetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("# TYPE http_requests_total counter\n"))
+	w.Write([]byte("# HELP http_requests_total Total number of HTTP requests\n"))
+	w.Write([]byte("http_requests_total{service=\"gateway\"} 1\n"))
 }

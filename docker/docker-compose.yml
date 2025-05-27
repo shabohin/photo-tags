@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  photo-tags-network:
+    driver: bridge
+
 services:
     rabbitmq:
         container_name: rabbitmq
@@ -17,6 +21,8 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
+        networks:
+            - photo-tags-network
 
     minio:
         container_name: minio
@@ -35,6 +41,8 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
+        networks:
+            - photo-tags-network
 
     gateway:
         container_name: gateway
@@ -56,6 +64,9 @@ services:
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+        networks:
+            - photo-tags-network
 
     analyzer:
         container_name: analyzer
@@ -75,8 +86,10 @@ services:
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
             - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-        # env_file: ${ENV_FILE}
+        networks:
+            - photo-tags-network
 
     processor:
         container_name: processor
@@ -95,6 +108,9 @@ services:
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+        networks:
+            - photo-tags-network
 
 volumes:
     rabbitmq_data:
