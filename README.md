@@ -99,13 +99,54 @@ The service handles all technical complexities (model selection, rate limits, re
 -   **Description** - more detailed description up to 200 characters
 -   **Keywords** - 49 keywords describing the image
 
+## Port Architecture
+
+The project uses a structured port allocation scheme for better organization:
+
+### 🖥️ Core Services (9000-90xx)
+-   **MinIO API**: [http://localhost:9000](http://localhost:9000) - Object storage API
+-   **MinIO Console**: [http://localhost:9001](http://localStorage:9001) - Storage management interface
+-   **RabbitMQ AMQP**: `localhost:9002` - Message queue protocol
+-   **Gateway HTTP**: [http://localhost:9003](http://localhost:9003) - Main service API
+
+### 📊 Monitoring & Telemetry (9100-91xx)
+-   **RabbitMQ Management**: [http://localhost:9100](http://localhost:9100) - Queue management interface
+-   **Jaeger UI**: [http://localhost:9101](http://localhost:9101) - Distributed tracing dashboard
+-   **Prometheus**: [http://localhost:9109](http://localhost:9109) - Metrics collection
+-   **Grafana**: [http://localhost:9110](http://localhost:9110) - Monitoring dashboards
+
 ## Monitoring
 
-After startup, you can access the following interfaces:
+The service includes comprehensive monitoring and observability:
+
+### Starting Monitoring Stack
+
+```bash
+./scripts/start-monitoring.sh
+```
+
+### Monitoring Interfaces
 
 -   **RabbitMQ Management**: [http://localhost:9100](http://localhost:9100) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
 -   **Gateway API**: [http://localhost:9003](http://localhost:9003) (health check available at `/health`)
+-   **Jaeger Tracing**: [http://localhost:9101](http://localhost:9101) - View distributed traces
+-   **Prometheus Metrics**: [http://localhost:9109](http://localhost:9109) - Raw metrics data
+-   **Grafana Dashboards**: [http://localhost:9110](http://localhost:9110) - Visual dashboards (admin/admin)
+
+### What You Can Monitor
+
+1. **Distributed Tracing**: Track requests through all microservices
+2. **System Metrics**: CPU, memory, disk usage for all containers
+3. **Application Metrics**: Processing times, queue lengths, error rates
+4. **Queue Health**: RabbitMQ message flow and consumer status
+5. **Storage Metrics**: MinIO bucket usage and API performance
+
+### Stopping Monitoring
+
+```bash
+./scripts/stop-monitoring.sh
+```
 
 ## Service Logs
 

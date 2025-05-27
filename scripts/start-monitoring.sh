@@ -20,10 +20,10 @@ docker-compose -f docker-compose.monitoring.yml up -d
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Monitoring stack started successfully!${NC}"
-    echo -e "- Jaeger UI: ${YELLOW}http://localhost:16686${NC} - Distributed tracing"
-    echo -e "- Prometheus: ${YELLOW}http://localhost:9090${NC} - Metrics collection"  
-    echo -e "- Grafana: ${YELLOW}http://localhost:3000${NC} - Dashboards (admin/admin)"
-    echo -e "- OTEL Collector: ${YELLOW}http://localhost:8888/metrics${NC} - OpenTelemetry metrics"
+    echo -e "- Jaeger UI: ${YELLOW}http://localhost:9101${NC} - Distributed tracing"
+    echo -e "- Prometheus: ${YELLOW}http://localhost:9109${NC} - Metrics collection"  
+    echo -e "- Grafana: ${YELLOW}http://localhost:9110${NC} - Dashboards (admin/admin)"
+    echo -e "- OTEL Collector: ${YELLOW}http://localhost:9108/metrics${NC} - OpenTelemetry metrics"
     
     echo ""
     echo -e "${GREEN}To view logs:${NC}"

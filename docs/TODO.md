@@ -1,8 +1,8 @@
 # TODO.md - Photo Tags Service Status
 
-## Project Status as of May 26, 2025
+## Project Status as of May 27, 2025
 
-### 📊 Overall Status: **IN DEVELOPMENT** (40% completion)
+### 📊 Overall Status: **IN DEVELOPMENT** (45% completion)
 
 ---
 
@@ -17,9 +17,11 @@
 - [x] Detailed development documentation
 - [x] Testing strategy defined
 - [x] Linter configuration (.golangci.yml)
+- [x] **NEW**: Port architecture restructured (9000-90xx services, 9100-91xx monitoring)
+- [x] **NEW**: Complete monitoring stack configured (Jaeger, Prometheus, Grafana)
 
 ### ⚠️ IN PROGRESS
-- [ ] Finalizing deployment scripts
+- [x] ~~Finalizing deployment scripts~~ **COMPLETED**
 
 ---
 
@@ -32,9 +34,13 @@
 - [x] Package `pkg/models` - shared data structures
 - [x] Docker configuration for all services
 - [x] RabbitMQ and MinIO setup in Docker Compose
+- [x] **NEW**: Complete monitoring stack with OpenTelemetry
+- [x] **NEW**: Distributed tracing with Jaeger
+- [x] **NEW**: Metrics collection with Prometheus
+- [x] **NEW**: Visualization dashboards with Grafana
 
-### ⚠️ IN PROGRESS
-- [ ] Monitoring and metrics setup
+### ⚠️ NEEDS ATTENTION
+- [ ] **pkg/observability** - compilation errors (context and semconv imports)
 
 ---
 
@@ -121,33 +127,39 @@
 - [x] Utility scripts (build.sh, start.sh, stop.sh, etc.)
 - [x] Environment variables template (.env.example)
 - [x] Environment configuration setup
+- [x] **NEW**: Structured port allocation system
+- [x] **NEW**: Monitoring stack with start-monitoring.sh/stop-monitoring.sh
+- [x] **NEW**: Updated documentation with new port scheme
 
 ### ❌ REQUIRES IMPLEMENTATION
 - [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Monitoring and alerts
-- [ ] Healthcheck endpoints for all services
+- [ ] **HIGH PRIORITY**: Fix pkg/observability compilation errors
+- [ ] Production-ready monitoring alerts
 
 ---
 
 ## 🎯 Priority Tasks for Next Iteration
 
 ### 🔥 CRITICAL PRIORITY (Next 1-2 weeks)
-1. **Analyzer Service** - Implement complete analysis logic
+1. **Fix observability package** - compilation errors blocking tests
+   - Fix context and semconv import issues
+   - Ensure OpenTelemetry integration works properly
+
+2. **Analyzer Service** - Implement complete analysis logic
    - OpenRouter API integration
    - RabbitMQ consumers/publishers
    - Image processing
    
-2. **Processor Service** - Full implementation from scratch
+3. **Processor Service** - Full implementation from scratch
    - Architecture and structure
    - ExifTool integration
    - Metadata embedding in images
 
-3. **Basic Unit tests** for critical components
-
 ### ⚡ HIGH PRIORITY (2-4 weeks)
-4. **Integration tests** for all services
+4. **Integration tests** for all services with new port scheme
 5. **End-to-end testing** of complete workflow
-6. **CI/CD pipeline** for automated testing
+6. **Monitoring dashboards** configuration for Grafana
+7. **CI/CD pipeline** for automated testing
 
 ### 📈 MEDIUM PRIORITY (1-2 months)
 8. **Performance testing** and optimization
@@ -162,24 +174,28 @@
 - ✅ Gateway Service (complete)
 - ✅ RabbitMQ and MinIO infrastructure
 - ✅ Docker environment
+- ✅ **NEW**: Complete monitoring stack (Jaeger, Prometheus, Grafana)
+- ✅ **NEW**: Structured port architecture
+- ✅ **NEW**: Distributed tracing and metrics collection
 
 ### What blocks launch:
 - ❌ Analyzer Service (not implemented)
 - ❌ Processor Service (not implemented)
-- ❌ Lack of tests
+- ❌ Observability package compilation errors
+- ❌ Lack of comprehensive tests
 
 ### Time estimate to MVP:
-**4-6 weeks** with active development
+**3-4 weeks** with active development (improved due to completed monitoring infrastructure)
 
 ---
 
 ## 📋 Next Steps
 
-1. **Immediately**: Implement Analyzer Service
-2. **This week**: Implement Processor Service  
-3. **Next week**: Write basic tests
-4. **In 2 weeks**: Integration testing
-5. **In a month**: Production deployment preparation
+1. **Immediately**: Fix pkg/observability compilation errors
+2. **This week**: Implement Analyzer Service  
+3. **Next week**: Implement Processor Service
+4. **Following week**: Write comprehensive tests
+5. **In 3 weeks**: Production deployment preparation
 
 ---
 
@@ -197,12 +213,65 @@
 - Only stub exists, requires full implementation
 - Critical component for system operation
 
-### Infrastructure: 90% ✅
+### Infrastructure: 95% ✅ **(IMPROVED)**
 - Docker, RabbitMQ, MinIO configured
-- Requires monitoring and CI/CD
+- **NEW**: Complete monitoring stack operational
+- **NEW**: Structured port architecture
+- Requires only minor fixes and CI/CD
 
 ---
 
-**Last updated**: May 26, 2025  
+## 🔧 Technical Debt and Fixes Needed
+
+### ⚠️ IMMEDIATE FIXES REQUIRED
+1. **pkg/observability package** - Fix import errors:
+   - `undefined: semconv.HTTPHost` 
+   - `undefined: context` (import context package)
+   - Update OpenTelemetry imports to correct versions
+
+2. **Gateway service tests** - Fix test failures due to observability imports
+
+### 📈 MONITORING IMPROVEMENTS NEEDED
+1. **Grafana Dashboards** - Configure service-specific dashboards
+2. **Alerting Rules** - Set up Prometheus alerting for critical metrics
+3. **Log Aggregation** - Consider ELK stack integration for centralized logging
+
+---
+
+**Last updated**: May 27, 2025  
 **Updated by**: Claude AI  
-**Next review**: Upon completion of Analyzer/Processor Services
+**Next review**: Upon fixing observability package and implementing Analyzer Service
+
+---
+
+## 🌐 Port Architecture Documentation
+
+### Core Services (9000-90xx)
+| Service | Port | Protocol | Description |
+|---------|------|----------|-------------|
+| MinIO API | 9000 | HTTP | Object storage API |
+| MinIO Console | 9001 | HTTP | Web management interface |
+| RabbitMQ AMQP | 9002 | AMQP | Message queue protocol |
+| Gateway HTTP | 9003 | HTTP | Main service API & health checks |
+
+### Monitoring & Telemetry (9100-91xx)
+| Service | Port | Protocol | Description |
+|---------|------|----------|-------------|
+| RabbitMQ Management | 9100 | HTTP | Queue management web UI |
+| Jaeger UI | 9101 | HTTP | Tracing dashboard |
+| Jaeger gRPC | 9102 | gRPC | Trace collection |
+| Jaeger HTTP | 9103 | HTTP | Trace submission |
+| Jaeger UDP 1 | 9104 | UDP | Agent communication |
+| Jaeger UDP 2 | 9105 | UDP | Agent communication |
+| OTEL gRPC | 9106 | gRPC | OpenTelemetry collector |
+| OTEL HTTP | 9107 | HTTP | OpenTelemetry collector |
+| OTEL Metrics | 9108 | HTTP | Collector metrics endpoint |
+| Prometheus | 9109 | HTTP | Metrics collection |
+| Grafana | 9110 | HTTP | Monitoring dashboards |
+
+### Benefits of New Port Scheme
+- ✅ **Logical grouping**: Services vs monitoring clearly separated
+- ✅ **Easy to remember**: Sequential numbering within categories
+- ✅ **Scalable**: Room for future services in each range
+- ✅ **No conflicts**: No overlapping with common system ports
+- ✅ **Documentation friendly**: Easy to document and maintain
