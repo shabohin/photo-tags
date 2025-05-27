@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -14,19 +15,19 @@ import (
 // HTTPMiddleware creates HTTP middleware for OpenTelemetry tracing
 func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 	tracer := otel.Tracer(serviceName)
-	
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Extract trace context from headers
 			ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-			
+
 			// Start span
 			ctx, span := tracer.Start(ctx, r.Method+" "+r.URL.Path,
 				trace.WithAttributes(
 					semconv.HTTPMethod(r.Method),
 					semconv.HTTPRoute(r.URL.Path),
 					semconv.HTTPScheme(r.URL.Scheme),
-					semconv.HTTPHost(r.Host),
+					semconv.ServerAddress(r.Host),
 					semconv.UserAgentOriginal(r.UserAgent()),
 				),
 				trace.WithSpanKind(trace.SpanKindServer),
@@ -35,7 +36,7 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 
 			// Wrap response writer to capture status code
 			wrapper := &responseWriter{ResponseWriter: w, statusCode: 200}
-			
+
 			// Process request
 			start := time.Now()
 			next.ServeHTTP(wrapper, r.WithContext(ctx))
@@ -55,6 +56,7 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
 // responseWriter wraps http.ResponseWriter to capture response details
 type responseWriter struct {
 	http.ResponseWriter
@@ -74,9 +76,13 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 // TraceRabbitMQPublish traces RabbitMQ message publishing
-func TraceRabbitMQPublish(ctx context.Context, serviceName, queueName string, message interface{}) (context.Context, trace.Span) {
+func TraceRabbitMQPublish(
+	ctx context.Context,
+	serviceName, queueName string,
+	message interface{},
+) (context.Context, trace.Span) {
 	tracer := otel.Tracer(serviceName)
-	
+
 	ctx, span := tracer.Start(ctx, "rabbitmq.publish",
 		trace.WithAttributes(
 			attribute.String("messaging.system", "rabbitmq"),
@@ -85,14 +91,14 @@ func TraceRabbitMQPublish(ctx context.Context, serviceName, queueName string, me
 		),
 		trace.WithSpanKind(trace.SpanKindProducer),
 	)
-	
+
 	return ctx, span
 }
 
 // TraceRabbitMQConsume traces RabbitMQ message consumption
 func TraceRabbitMQConsume(ctx context.Context, serviceName, queueName string) (context.Context, trace.Span) {
 	tracer := otel.Tracer(serviceName)
-	
+
 	ctx, span := tracer.Start(ctx, "rabbitmq.consume",
 		trace.WithAttributes(
 			attribute.String("messaging.system", "rabbitmq"),
@@ -101,6 +107,6 @@ func TraceRabbitMQConsume(ctx context.Context, serviceName, queueName string) (c
 		),
 		trace.WithSpanKind(trace.SpanKindConsumer),
 	)
-	
+
 	return ctx, span
 }

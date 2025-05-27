@@ -61,7 +61,7 @@ func main() {
 	if otlpEndpoint == "" {
 		otlpEndpoint = "localhost:4317"
 	}
-	
+
 	if err := observability.InitTracing("gateway", "1.0.0", otlpEndpoint); err != nil {
 		logger.Error("Failed to initialize tracing", err)
 		// Continue without tracing - not critical for basic functionality
@@ -69,7 +69,7 @@ func main() {
 		logger.Info("OpenTelemetry tracing initialized", map[string]interface{}{
 			"endpoint": otlpEndpoint,
 		})
-		
+
 		// Setup graceful tracing shutdown
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

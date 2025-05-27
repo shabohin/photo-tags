@@ -95,7 +95,20 @@ func (h *Handler) StartServer(ctx context.Context) error {
 func (h *Handler) MetricsHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("# TYPE http_requests_total counter\n"))
-	w.Write([]byte("# HELP http_requests_total Total number of HTTP requests\n"))
-	w.Write([]byte("http_requests_total{service=\"gateway\"} 1\n"))
+
+	if _, err := w.Write([]byte("# TYPE http_requests_total counter\n")); err != nil {
+		h.logger.Error("Failed to write metrics response", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write([]byte("# HELP http_requests_total Total number of HTTP requests\n")); err != nil {
+		h.logger.Error("Failed to write metrics response", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write([]byte("http_requests_total{service=\"gateway\"} 1\n")); err != nil {
+		h.logger.Error("Failed to write metrics response", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
