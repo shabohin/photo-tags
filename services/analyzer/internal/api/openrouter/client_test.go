@@ -50,7 +50,10 @@ func TestAnalyzeImage_Success(t *testing.T) {
   "choices": [
     {
       "message": {
-		"content": "{\"title\": \"Test Title\", \"description\": \"Test Description\", \"keywords\": [\"test\", \"image\", \"analysis\"]}",
+        "content": "` +
+		`{\"title\": \"Test Title\", ` +
+		`\"description\": \"Test Description\", ` +
+		`\"keywords\": [\"test\", \"image\", \"analysis\"]}` + `",
         "role": "assistant"
       }
     }
