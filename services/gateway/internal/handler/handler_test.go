@@ -17,7 +17,7 @@ func TestHealthCheck(t *testing.T) {
 	h := NewHandler(logger, cfg)
 
 	// Create request
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequest(http.MethodGet, "/health", http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestSetupRoutes(t *testing.T) {
 	router := h.SetupRoutes()
 
 	// Test health endpoint
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequest(http.MethodGet, "/health", http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestSetupRoutes(t *testing.T) {
 	}
 
 	// Verify not found for non-existent endpoint
-	req, err = http.NewRequest("GET", "/non-existent", nil)
+	req, err = http.NewRequest(http.MethodGet, "/non-existent", http.NoBody)
 	if err != nil {
 		t.Fatal(err)
 	}

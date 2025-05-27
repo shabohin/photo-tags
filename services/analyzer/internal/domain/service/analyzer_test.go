@@ -5,11 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
-	"github.com/shabohin/photo-tags/services/analyzer/internal/mocks"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/mocks"
 )
 
 func TestNewImageAnalyzer(t *testing.T) {
@@ -112,7 +113,17 @@ func TestAnalyzeImage_OpenRouterError(t *testing.T) {
 	minioClient.On("DownloadImage", mock.Anything, "test-image.jpg").Return(imageBytes, nil)
 
 	// Setup mock for OpenRouter client with error
-	openRouterClient.On("AnalyzeImage", mock.Anything, imageBytes, "test-trace-id").Return(model.Metadata{}, errors.New("openrouter error"))
+	openRouterClient.
+		On(
+			"AnalyzeImage",
+			mock.Anything,
+			imageBytes,
+			"test-trace-id",
+		).
+		Return(
+			model.Metadata{},
+			errors.New("openrouter error"),
+		)
 
 	// Create service with mocks
 	analyzer := NewImageAnalyzer(minioClient, openRouterClient, logger)

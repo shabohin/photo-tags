@@ -10,16 +10,17 @@ import (
 )
 
 type Publisher struct {
-	url        string
-	queueName  string
-	maxRetries int
-	retryDelay time.Duration
 	logger     *logrus.Logger
 	conn       *amqp.Connection
 	channel    *amqp.Channel
+	url        string
+	queueName  string
+	retryDelay time.Duration
+	maxRetries int
 }
 
-func NewPublisher(url, queueName string, maxRetries int, retryDelay time.Duration, logger *logrus.Logger) (*Publisher, error) {
+func NewPublisher(url, queueName string, maxRetries int, retryDelay time.Duration,
+	logger *logrus.Logger) (*Publisher, error) {
 	publisher := &Publisher{
 		url:        url,
 		queueName:  queueName,
@@ -54,7 +55,9 @@ func (p *Publisher) connect() error {
 
 	p.channel, err = p.conn.Channel()
 	if err != nil {
-		p.conn.Close()
+		if closeErr := p.conn.Close(); closeErr != nil {
+			p.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 
@@ -67,7 +70,9 @@ func (p *Publisher) connect() error {
 		nil,   // arguments
 	)
 	if err != nil {
-		p.conn.Close()
+		if closeErr := p.conn.Close(); closeErr != nil {
+			p.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to declare queue: %w", err)
 	}
 

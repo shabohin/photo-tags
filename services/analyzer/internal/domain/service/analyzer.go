@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/sirupsen/logrus"
+
+	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 )
 
 type ImageAnalyzerService struct {
@@ -14,7 +15,9 @@ type ImageAnalyzerService struct {
 	logger           *logrus.Logger
 }
 
-func NewImageAnalyzer(minioClient MinioClientInterface, openRouterClient OpenRouterClientInterface, logger *logrus.Logger) *ImageAnalyzerService {
+func NewImageAnalyzer(minioClient MinioClientInterface,
+	openRouterClient OpenRouterClientInterface,
+	logger *logrus.Logger) *ImageAnalyzerService {
 	return &ImageAnalyzerService{
 		minioClient:      minioClient,
 		openRouterClient: openRouterClient,

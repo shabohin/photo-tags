@@ -80,7 +80,7 @@ func (h *Handler) StartServer(ctx context.Context) error {
 	<-ctx.Done()
 
 	// Shutdown server
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	return server.Shutdown(shutdownCtx)

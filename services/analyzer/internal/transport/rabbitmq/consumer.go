@@ -11,17 +11,24 @@ import (
 )
 
 type Consumer struct {
-	url           string
-	queueName     string
-	prefetchCount int
-	maxRetries    int
-	retryDelay    time.Duration
 	logger        *logrus.Logger
 	conn          *amqp.Connection
 	channel       *amqp.Channel
+	url           string
+	queueName     string
+	retryDelay    time.Duration
+	prefetchCount int
+	maxRetries    int
 }
 
-func NewConsumer(url, queueName string, prefetchCount, maxRetries int, retryDelay time.Duration, logger *logrus.Logger) (*Consumer, error) {
+func NewConsumer(
+	url string,
+	queueName string,
+	prefetchCount int,
+	maxRetries int,
+	retryDelay time.Duration,
+	logger *logrus.Logger,
+) (*Consumer, error) {
 	consumer := &Consumer{
 		url:           url,
 		queueName:     queueName,
@@ -57,7 +64,9 @@ func (c *Consumer) connect() error {
 
 	c.channel, err = c.conn.Channel()
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 
@@ -70,7 +79,9 @@ func (c *Consumer) connect() error {
 		nil,   // arguments
 	)
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to declare queue: %w", err)
 	}
 
@@ -80,7 +91,9 @@ func (c *Consumer) connect() error {
 		false,           // global
 	)
 	if err != nil {
-		c.conn.Close()
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
 		return fmt.Errorf("failed to set QoS: %w", err)
 	}
 

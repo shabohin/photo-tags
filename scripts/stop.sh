@@ -11,7 +11,7 @@ ROOT_DIR=$(dirname "$(dirname "$0")")
 cd "$ROOT_DIR/docker"
 
 echo -e "${YELLOW}Stopping services...${NC}"
-docker-compose down
+docker compose down
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Services stopped successfully!${NC}"

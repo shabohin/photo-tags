@@ -1,0 +1,73 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Gateway Service",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "./services/gateway/cmd/main.go",
+            "env": {
+                "TELEGRAM_TOKEN": "test-token",
+                "RABBITMQ_URL": "amqp://user:password@localhost:5672/",
+                "MINIO_ENDPOINT": "localhost:9000",
+                "MINIO_ACCESS_KEY": "minioadmin",
+                "MINIO_SECRET_KEY": "minioadmin"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Analyzer Service", 
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "./services/analyzer/cmd/main.go",
+            "env": {
+                "RABBITMQ_URL": "amqp://user:password@localhost:5672/",
+                "MINIO_ENDPOINT": "localhost:9000",
+                "MINIO_ACCESS_KEY": "minioadmin",
+                "MINIO_SECRET_KEY": "minioadmin",
+                "OPENAI_API_KEY": "test-key"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Processor Service",
+            "type": "go", 
+            "request": "launch",
+            "mode": "auto",
+            "program": "./services/processor/cmd/main.go",
+            "env": {
+                "RABBITMQ_URL": "amqp://user:password@localhost:5672/",
+                "MINIO_ENDPOINT": "localhost:9000",
+                "MINIO_ACCESS_KEY": "minioadmin", 
+                "MINIO_SECRET_KEY": "minioadmin"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug Current File",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug Test",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

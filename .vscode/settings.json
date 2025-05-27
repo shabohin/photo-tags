@@ -1,0 +1,14 @@
+{
+    "go.lintTool": "golangci-lint",
+    "go.lintOnSave": "workspace",
+    "go.vetOnSave": "off",
+    // "go.buildOnSave": "workspace",
+    "go.useLanguageServer": true,
+    "go.formatTool": "goimports",
+    "[go]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    }
+}

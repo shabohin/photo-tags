@@ -8,24 +8,24 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
-	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter/openroutergo_adapter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
-	"github.com/sirupsen/logrus"
 )
 
 type App struct {
+	shutdown    chan struct{}
 	consumer    *rabbitmq.Consumer
 	publisher   *rabbitmq.Publisher
 	minioClient *minio.Client
 	processor   *service.MessageProcessorService
 	logger      *logrus.Logger
-	workerCount int
-	shutdown    chan struct{}
 	shutdownWg  sync.WaitGroup
+	workerCount int
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -51,13 +51,12 @@ func New(cfg *config.Config) (*App, error) {
 
 	var openRouterClient openrouter.OpenRouterClient
 	if cfg.OpenRouter.UseOpenRouterGoAdapter {
-		openRouterClient = openroutergo_adapter.NewOpenRouterGoAdapter(
+		openRouterClient = openrouter.NewOpenRouterGoAdapter(
 			cfg.OpenRouter.APIKey,
 			cfg.OpenRouter.Model,
-			cfg.OpenRouter.MaxTokens,
-			cfg.OpenRouter.Temperature,
 			cfg.OpenRouter.Prompt,
-			logger,
+			cfg.OpenRouter.Temperature,
+			cfg.OpenRouter.MaxTokens,
 		)
 	} else {
 		openRouterClient = openrouter.NewClient(
@@ -105,7 +104,9 @@ func New(cfg *config.Config) (*App, error) {
 		logger,
 	)
 	if err != nil {
-		publisher.Close()
+		if closeErr := publisher.Close(); closeErr != nil {
+			logger.WithError(closeErr).Error("Failed to close publisher during cleanup")
+		}
 		logger.WithError(err).Error("Failed to initialize RabbitMQ consumer")
 		return nil, err
 	}

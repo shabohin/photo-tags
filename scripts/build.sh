@@ -12,9 +12,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose.${NC}"
+# Check if Docker Compose is available
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not available. Please ensure Docker is properly installed.${NC}"
     exit 1
 fi
 
@@ -39,9 +39,9 @@ fi
 
 # Build images
 if [ -z "$SERVICES" ]; then
-    docker-compose build
+    docker compose build
 else
-    docker-compose build $SERVICES
+    docker compose build $SERVICES
 fi
 
 # Check if build was successful

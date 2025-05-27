@@ -4,7 +4,8 @@
         {
             "label": "Run All Checks",
             "type": "shell",
-            "command": "./scripts/check.sh",
+            "command": "make",
+            "args": ["check"],
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -18,7 +19,8 @@
         {
             "label": "Run Tests",
             "type": "shell",
-            "command": "./scripts/test.sh",
+            "command": "make",
+            "args": ["test"],
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -61,10 +63,59 @@
             }
         },
         {
+            "label": "Auto-fix Linting Issues",
+            "type": "shell",
+            "command": "./scripts/fix-lint.sh",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Watch Linting (Gateway)",
+            "type": "shell",
+            "command": "watch",
+            "args": ["-n", "2", "cd services/gateway && golangci-lint run --out-format=json || true"],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
             "label": "Fix Dependencies",
             "type": "shell",
-            "command": "./scripts/fix-deps.sh",
+            "command": "make",
+            "args": ["deps"],
             "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "Format Code",
+            "type": "shell",
+            "command": "make",
+            "args": ["fmt"],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$go"]
+        },
+        {
+            "label": "Pre-commit Checks",
+            "type": "shell",
+            "command": "make",
+            "args": ["pre-commit"],
+            "group": "test",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -85,7 +136,8 @@
         {
             "label": "Build Services",
             "type": "shell",
-            "command": "./scripts/build.sh",
+            "command": "make",
+            "args": ["build"],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -99,7 +151,8 @@
         {
             "label": "Start Services",
             "type": "shell",
-            "command": "./scripts/start.sh",
+            "command": "make",
+            "args": ["start"],
             "group": "none",
             "presentation": {
                 "reveal": "always",
@@ -110,7 +163,8 @@
         {
             "label": "Stop Services",
             "type": "shell",
-            "command": "./scripts/stop.sh",
+            "command": "make",
+            "args": ["stop"],
             "group": "none",
             "presentation": {
                 "reveal": "always",

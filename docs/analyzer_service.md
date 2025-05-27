@@ -282,7 +282,7 @@ CMD ["/app/service"]
 Start all services:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 Analyzer depends on RabbitMQ and MinIO, and requires `OPENROUTER_API_KEY` to be set.

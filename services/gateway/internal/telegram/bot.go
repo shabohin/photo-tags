@@ -13,6 +13,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
+
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/models"
@@ -49,7 +50,12 @@ func NewBotLogger(logger *logging.Logger, groupID string) *BotLogger {
 }
 
 // NewBot creates a new Telegram bot
-func NewBot(cfg *config.Config, logger *logging.Logger, minio storage.MinIOInterface, rabbitmq messaging.RabbitMQInterface) (*Bot, error) {
+func NewBot(
+	cfg *config.Config,
+	logger *logging.Logger,
+	minio storage.MinIOInterface,
+	rabbitmq messaging.RabbitMQInterface,
+) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Telegram bot: %w", err)
@@ -137,7 +143,6 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process photo")
 			return
 		}
-
 	} else if update.Message.Document != nil {
 		// Handle document
 		document := update.Message.Document
@@ -176,13 +181,28 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 // processMedia processes media files (photos and documents)
-func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotapi.Message, _, fileName, fileURL string) error {
+func (b *Bot) processMedia(
+	ctx context.Context,
+	log *BotLogger,
+	message *tgbotapi.Message,
+	_ string,
+	fileName string,
+	fileURL string,
+) error {
 	// Download file
-	resp, err := http.Get(fileURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Error("Failed to close response body", closeErr)
+		}
+	}()
 
 	// Determine content type
 	contentType := mime.TypeByExtension(filepath.Ext(fileName))
@@ -192,7 +212,7 @@ func (b *Bot) processMedia(ctx context.Context, log *BotLogger, message *tgbotap
 
 	// Generate trace ID
 	traceID := uuid.New().String()
-	log = NewBotLogger(log.Logger.WithTraceID(traceID), log.GetGroupID())
+	log = NewBotLogger(log.WithTraceID(traceID), log.GetGroupID())
 
 	// Upload file to MinIO
 	minioObjectPath := fmt.Sprintf("%s/%s", traceID, fileName)
@@ -236,7 +256,7 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 
 	// Check if processing failed
 	if message.Status == "failed" {
-		b.sendErrorMessage(message.TelegramID, fmt.Sprintf("Failed to process image: %s", message.Error))
+		b.sendErrorMessage(message.TelegramID, "Failed to process image: "+message.Error)
 		return nil
 	}
 
@@ -248,7 +268,11 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 		b.sendErrorMessage(message.TelegramID, "Failed to download processed image")
 		return err
 	}
-	defer obj.Close()
+	defer func() {
+		if closeErr := obj.Close(); closeErr != nil {
+			botLog.Error("Failed to close MinIO object", closeErr)
+		}
+	}()
 
 	// Read file contents
 	fileBytes, err := io.ReadAll(obj)
@@ -282,9 +306,16 @@ func (b *Bot) handleTextMessage(message *tgbotapi.Message) {
 	if message.IsCommand() {
 		switch message.Command() {
 		case "start":
-			b.sendMessage(message.Chat.ID, "Welcome to Photo Tags Bot! Send me an image, and I'll add AI-generated metadata to it.")
+			b.sendMessage(
+				message.Chat.ID,
+				"Welcome to Photo Tags Bot! Send me an image, "+
+					"and I'll add AI-generated metadata to it.",
+			)
 		case "help":
-			b.sendMessage(message.Chat.ID, "This bot automatically adds titles, descriptions, and keywords to your images using AI.\n\nJust send me a JPG or PNG image, and I'll process it for you!")
+			helpText := "This bot automatically adds titles, descriptions, and keywords " +
+				"to your images using AI.\n\n" +
+				"Just send me a JPG or PNG image, and I'll process it for you!"
+			b.sendMessage(message.Chat.ID, helpText)
 		default:
 			b.sendMessage(message.Chat.ID, "Unknown command. Try /help for available commands.")
 		}

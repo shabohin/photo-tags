@@ -12,9 +12,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose.${NC}"
+# Check if Docker Compose is available
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not available. Please ensure Docker is properly installed.${NC}"
     exit 1
 fi
 
@@ -56,7 +56,7 @@ fi
 
 # Start the project
 echo -e "${GREEN}Starting services...${NC}"
-docker-compose up -d
+docker compose up -d
 
 # Check if services started successfully
 if [ $? -eq 0 ]; then
@@ -64,11 +64,11 @@ if [ $? -eq 0 ]; then
     echo -e "- RabbitMQ UI: ${YELLOW}http://localhost:15672${NC} (user/password)"
     echo -e "- MinIO Console: ${YELLOW}http://localhost:9001${NC} (minioadmin/minioadmin)"
     echo -e "- Gateway Service: ${YELLOW}http://localhost:8080${NC}"
-    
+
     echo ""
     echo -e "${GREEN}To view logs:${NC}"
     echo -e "  docker logs gateway -f    ${YELLOW}# For Gateway service${NC}"
-    
+
     echo ""
     echo -e "${GREEN}To stop services:${NC}"
     echo -e "  ./scripts/stop.sh"

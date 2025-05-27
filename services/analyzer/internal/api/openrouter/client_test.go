@@ -50,7 +50,10 @@ func TestAnalyzeImage_Success(t *testing.T) {
   "choices": [
     {
       "message": {
-        "content": "{\"title\": \"Test Title\", \"description\": \"Test Description\", \"keywords\": [\"test\", \"image\", \"analysis\"]}",
+        "content": "` +
+		`{\"title\": \"Test Title\", ` +
+		`\"description\": \"Test Description\", ` +
+		`\"keywords\": [\"test\", \"image\", \"analysis\"]}` + `",
         "role": "assistant"
       }
     }
@@ -76,9 +79,15 @@ func TestAnalyzeImage_Success(t *testing.T) {
 	assert.Equal(t, "Test Title", metadata.Title)
 	assert.Equal(t, "Test Description", metadata.Description)
 	assert.Equal(t, 3, len(metadata.Keywords))
-	assert.Equal(t, "test", metadata.Keywords[0])
-	assert.Equal(t, "image", metadata.Keywords[1])
-	assert.Equal(t, "analysis", metadata.Keywords[2])
+	if len(metadata.Keywords) > 0 {
+		assert.Equal(t, "test", metadata.Keywords[0])
+	}
+	if len(metadata.Keywords) > 1 {
+		assert.Equal(t, "image", metadata.Keywords[1])
+	}
+	if len(metadata.Keywords) > 2 {
+		assert.Equal(t, "analysis", metadata.Keywords[2])
+	}
 }
 
 func TestAnalyzeImage_ErrorResponse(t *testing.T) {

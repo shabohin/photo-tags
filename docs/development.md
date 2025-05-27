@@ -92,6 +92,53 @@ This document outlines development workflows, best practices, and processes for 
     - Merge approved code to develop
     - Verify integration tests pass
 
+## Multi-Module Project Structure
+
+### Overview
+
+The Photo Tags Service uses a multi-module Go project structure to organize code into logical units:
+
+-   **Services**: Each service is a separate Go module with its own `go.mod` file
+    -   `services/analyzer`: Processes images and generates metadata using AI
+    -   `services/gateway`: Handles user input via Telegram and coordinates workflows
+    -   `services/processor`: Processes and transforms images
+-   **Shared Packages**: Common code used by multiple services
+    -   `pkg`: Shared utilities, interfaces, and models
+
+This structure provides several benefits:
+
+-   **Separation of Concerns**: Each module has a clearly defined responsibility
+-   **Dependency Management**: Modules can have different dependency versions as needed
+-   **Build Efficiency**: Only rebuild what has changed
+-   **Deployment Flexibility**: Deploy services independently
+
+### Working with Multiple Modules
+
+When developing in a multi-module project, keep these guidelines in mind:
+
+1. **Module-Specific Commands**: Run Go commands within the specific module directory
+
+    ```bash
+    cd services/analyzer
+    go test ./...
+    ```
+
+2. **Using Shared Code**: Import shared packages with the full module path
+
+    ```go
+    import "github.com/shabohin/photo-tags/pkg/messaging"
+    ```
+
+3. **Cross-Module Testing**: Test each module in isolation first, then test interactions
+
+4. **Module Versioning**: Each module can be versioned independently as needed
+
+### Module Dependencies
+
+-   Services can depend on the shared `pkg` module
+-   Services should not depend directly on other services
+-   Communication between services occurs through defined interfaces (e.g., message queues)
+
 ## Testing Approach
 
 We follow a comprehensive testing strategy with multiple testing levels:
@@ -143,12 +190,95 @@ go test ./services/gateway/...
 
 ## Continuous Integration
 
-We use GitHub Actions for CI/CD:
+We use GitHub Actions for CI/CD with a simplified approach based on make commands:
 
 -   Automated testing on each commit
 -   Code coverage reporting
 -   Linting checks
--   Docker image building and testing
+-   Docker image building
+-   Security scanning with Gosec
+
+### Simplified CI Structure
+
+Our CI pipeline has been streamlined to use the same make commands that developers use locally:
+
+-   Consistent workflow between local development and CI
+-   Centralized logic through the Makefile
+-   Only 4 jobs total (clearly separating lint and test stages)
+-   No matrix strategy needed, reducing complexity
+
+### CI Workflow Jobs
+
+The CI workflow consists of the following jobs:
+
+1. **Lint**: Runs `make lint` for all modules
+
+    - Focused exclusively on code quality checks
+    - Runs golangci-lint with project-specific configuration
+    - Ensures consistent code style and detects common issues
+
+2. **Test**: Runs `make test` for all modules
+
+    - Executes unit tests with race detection
+    - Generates and uploads coverage reports to Codecov
+    - Validates functionality without mixing with style concerns
+
+3. **Build**: Uses `make build` for all services
+
+    - Only runs after both lint and test jobs succeed
+    - Builds all services using Docker Compose
+    - Ensures consistent build process with local development
+
+4. **Security**: Runs security scanning
+    - Uses Gosec to identify security issues
+    - Scans each service independently
+    - Only runs after both lint and test jobs succeed
+
+### Running CI Checks Locally
+
+You can run the same checks locally that are executed in CI, using the identical make commands:
+
+```bash
+# Run linting checks on all modules
+make lint
+
+# Run tests with coverage on all modules
+make test
+
+# Build all services
+make build
+
+# Run lint and test in sequence (previous approach)
+make check
+```
+
+Running lint and test separately allows you to:
+
+-   Get faster feedback on code style issues before running tests
+-   Identify the specific type of failure more quickly
+-   Match the exact CI pipeline behavior locally
+
+This consistency between local and CI environments ensures that if your code passes checks locally, it should also pass in the CI pipeline.
+
+### Benefits of the Separated Jobs Approach
+
+The new CI approach with separate lint and test jobs provides several advantages:
+
+-   **Consistent Developer Experience**: The same commands used locally now run in CI
+-   **Clearer Feedback**: Immediately see whether a failure is from linting or tests
+-   **Parallel Execution**: Lint and test jobs run in parallel, potentially reducing overall pipeline time
+-   **Better Visibility**: Dashboard clearly shows which specific check failed
+-   **Granular Control**: Developers can fix linting issues without waiting for tests to complete
+-   **Centralized Configuration**: Logic consolidated in Makefile and associated scripts
+-   **Easier Troubleshooting**: When an issue occurs, it's easier to reproduce locally with the same commands
+
+### Adding a New Module to CI
+
+When adding a new Go module to the project:
+
+1. Update the module-specific scripts (e.g., `scripts/lint.sh`, `scripts/test.sh`)
+2. The CI pipeline will automatically include it without changes to the workflow file
+3. Update the Makefile if needed for any module-specific build steps
 
 ## Documentation
 
@@ -175,11 +305,51 @@ We use GitHub Actions for CI/CD:
 
 ### Adding a New Service
 
-1. Create service directory in the services directory
-2. Set up the standard structure (cmd, internal)
-3. Configure Docker and Docker Compose files
-4. Add necessary message producers and consumers
-5. Update architecture documentation
+1. Create service directory in the services directory:
+
+    ```bash
+    mkdir -p services/new-service/cmd services/new-service/internal
+    ```
+
+2. Set up the standard structure:
+
+    ```
+    services/new-service/
+    ├── cmd/
+    │   └── main.go           # Application entry point
+    ├── internal/
+    │   ├── config/           # Service configuration
+    │   ├── handler/          # Business logic
+    │   └── utils/            # Helper functions
+    └── go.mod                # Dependencies
+    ```
+
+3. Initialize as a Go module:
+
+    ```bash
+    cd services/new-service
+    go mod init github.com/shabohin/photo-tags/services/new-service
+    ```
+
+4. Configure Docker and Docker Compose files:
+
+    - Add service to docker-compose.yml
+    - Create appropriate Dockerfile or use the shared one
+
+5. Add necessary message producers and consumers:
+
+    - Implement interfaces from pkg/messaging
+    - Define queue names and message structures
+
+6. Update architecture documentation:
+
+    - Add service to architecture diagrams
+    - Document service responsibilities and interactions
+
+7. Integrate with CI/CD pipeline:
+    - Update scripts/lint.sh and scripts/test.sh to include the new service
+    - Update scripts/pre-commit to include the new service
+    - No changes needed to CI workflow file as it uses make commands
 
 ### Debugging Tips
 
@@ -239,7 +409,7 @@ pkg/
 Use Docker Compose for local development:
 
 ```bash
-docker-compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### Staging Environment

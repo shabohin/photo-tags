@@ -53,7 +53,7 @@ func main() {
 
 	// Create logger
 	logger := logging.NewLogger("gateway")
-	logger.Info(fmt.Sprintf("Starting Gateway Service v1.0.0 at %s", time.Now().Format(time.RFC3339)), nil)
+	logger.Info("Starting Gateway Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
 
 	// Initialize dependencies
 	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)
@@ -110,7 +110,11 @@ func main() {
 }
 
 // initializeDependencies initializes MinIO and RabbitMQ clients
-func initializeDependencies(ctx context.Context, cfg *config.Config, logger *logging.Logger) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
+func initializeDependencies(
+	ctx context.Context,
+	cfg *config.Config,
+	logger *logging.Logger,
+) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
 	var minioClient storage.MinIOInterface
 	var rabbitmqClient messaging.RabbitMQInterface
 
@@ -120,9 +124,10 @@ func initializeDependencies(ctx context.Context, cfg *config.Config, logger *log
 	})
 
 	err := retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
-		client, err := storage.NewMinIOClient(cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
-		if err != nil {
-			return err
+		client, clientErr := storage.NewMinIOClient(
+			cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
+		if clientErr != nil {
+			return clientErr
 		}
 		minioClient = client
 		return nil
@@ -143,9 +148,9 @@ func initializeDependencies(ctx context.Context, cfg *config.Config, logger *log
 	})
 
 	err = retry(5, 2*time.Second, logger, "RabbitMQ client creation", func() error {
-		client, err := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
-		if err != nil {
-			return err
+		client, clientErr := messaging.NewRabbitMQClient(cfg.RabbitMQURL)
+		if clientErr != nil {
+			return clientErr
 		}
 		rabbitmqClient = client
 		return nil

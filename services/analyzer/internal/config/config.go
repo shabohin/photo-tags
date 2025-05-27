@@ -5,49 +5,50 @@ import (
 	"strconv"
 	"time"
 
-	pkgstorage "github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/sirupsen/logrus"
+
+	pkgstorage "github.com/shabohin/photo-tags/pkg/storage"
 )
 
 type Config struct {
+	Log struct {
+		Level  string
+		Format string
+	}
+
 	RabbitMQ struct {
 		URL               string
 		ConsumerQueue     string
 		PublisherQueue    string
-		PrefetchCount     int
-		ReconnectAttempts int
 		ReconnectDelay    time.Duration
+		ReconnectAttempts int
+		PrefetchCount     int
+	}
+
+	OpenRouter struct {
+		APIKey                 string
+		Model                  string
+		Prompt                 string
+		Temperature            float64
+		MaxTokens              int
+		UseOpenRouterGoAdapter bool
 	}
 
 	MinIO struct {
 		Endpoint        string
 		AccessKey       string
 		SecretKey       string
-		UseSSL          bool
 		OriginalBucket  string
 		DownloadTimeout time.Duration
-		ConnectAttempts int
 		ConnectDelay    time.Duration
-	}
-
-	OpenRouter struct {
-		APIKey                 string
-		Model                  string
-		MaxTokens              int
-		Temperature            float64
-		Prompt                 string
-		UseOpenRouterGoAdapter bool
-	}
-
-	Log struct {
-		Level  string
-		Format string
+		ConnectAttempts int
+		UseSSL          bool
 	}
 
 	Worker struct {
+		RetryDelay  time.Duration
 		Concurrency int
 		MaxRetries  int
-		RetryDelay  time.Duration
 	}
 }
 
@@ -77,7 +78,9 @@ func New() *Config {
 	cfg.OpenRouter.Model = getEnv("OPENROUTER_MODEL", "openai/gpt-4o")
 	cfg.OpenRouter.MaxTokens = getEnvAsInt("OPENROUTER_MAX_TOKENS", 500)
 	cfg.OpenRouter.Temperature = getEnvAsFloat("OPENROUTER_TEMPERATURE", 0.7)
-	cfg.OpenRouter.Prompt = getEnv("OPENROUTER_PROMPT", "Generate title, description and keywords for this image. Return strictly in JSON format with fields 'title', 'description' and 'keywords'.")
+	defaultPrompt := "Generate title, description and keywords for this image. " +
+		"Return strictly in JSON format with fields 'title', 'description' and 'keywords'."
+	cfg.OpenRouter.Prompt = getEnv("OPENROUTER_PROMPT", defaultPrompt)
 	cfg.OpenRouter.UseOpenRouterGoAdapter = getEnvAsBool("USE_OPENROUTERGO_ADAPTER", false)
 
 	// Log Config

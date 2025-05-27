@@ -24,21 +24,21 @@ func InitLogger(format string, level logrus.Level) *logrus.Logger {
 
 // Logger handles structured logging
 type Logger struct {
+	stdLog  *log.Logger
 	service string
 	traceID string
 	groupID string
-	stdLog  *log.Logger
 }
 
 // LogEntry represents a structured log entry
 type LogEntry struct {
+	Additional interface{} `json:"additional,omitempty"`
 	Timestamp  string      `json:"timestamp"`
 	Level      string      `json:"level"`
 	Service    string      `json:"service"`
 	TraceID    string      `json:"trace_id,omitempty"`
 	GroupID    string      `json:"group_id,omitempty"`
 	Message    string      `json:"message"`
-	Additional interface{} `json:"additional,omitempty"`
 }
 
 // NewLogger creates a new logger for a service

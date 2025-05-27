@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
-	"github.com/sirupsen/logrus"
 )
 
 type MessageProcessorService struct {
@@ -19,7 +20,13 @@ type MessageProcessorService struct {
 	retryDelay    time.Duration
 }
 
-func NewMessageProcessor(imageAnalyzer *ImageAnalyzerService, publisher *rabbitmq.Publisher, logger *logrus.Logger, maxRetries int, retryDelay time.Duration) *MessageProcessorService {
+func NewMessageProcessor(
+	imageAnalyzer *ImageAnalyzerService,
+	publisher *rabbitmq.Publisher,
+	logger *logrus.Logger,
+	maxRetries int,
+	retryDelay time.Duration,
+) *MessageProcessorService {
 	return &MessageProcessorService{
 		imageAnalyzer: imageAnalyzer,
 		publisher:     publisher,

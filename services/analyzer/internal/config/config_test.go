@@ -66,7 +66,10 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, "openai/gpt-4o", cfg.OpenRouter.Model)
 	assert.Equal(t, 500, cfg.OpenRouter.MaxTokens)
 	assert.Equal(t, 0.7, cfg.OpenRouter.Temperature)
-	assert.Equal(t, "Generate title, description and keywords for this image. Return strictly in JSON format with fields 'title', 'description' and 'keywords'.", cfg.OpenRouter.Prompt)
+	assert.Equal(t,
+		"Generate title, description and keywords for this image. "+
+			"Return strictly in JSON format with fields 'title', 'description' and 'keywords'.",
+		cfg.OpenRouter.Prompt)
 	assert.Equal(t, false, cfg.OpenRouter.UseOpenRouterGoAdapter)
 
 	assert.Equal(t, "info", cfg.Log.Level)

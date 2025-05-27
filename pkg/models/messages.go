@@ -4,49 +4,49 @@ import "time"
 
 // ImageUpload represents a message for the image_upload queue
 type ImageUpload struct {
+	Timestamp        time.Time `json:"timestamp"`
 	TraceID          string    `json:"trace_id"`
 	GroupID          string    `json:"group_id"`
-	TelegramID       int64     `json:"telegram_id"`
 	TelegramUsername string    `json:"telegram_username"`
 	OriginalFilename string    `json:"original_filename"`
 	OriginalPath     string    `json:"original_path"`
-	Timestamp        time.Time `json:"timestamp"`
+	TelegramID       int64     `json:"telegram_id"`
 }
 
 // MetadataGenerated represents a message for the metadata_generated queue
 type MetadataGenerated struct {
+	Timestamp        time.Time `json:"timestamp"`
 	TraceID          string    `json:"trace_id"`
 	GroupID          string    `json:"group_id"`
-	TelegramID       int64     `json:"telegram_id"`
 	OriginalFilename string    `json:"original_filename"`
 	OriginalPath     string    `json:"original_path"`
 	Metadata         Metadata  `json:"metadata"`
-	Timestamp        time.Time `json:"timestamp"`
+	TelegramID       int64     `json:"telegram_id"`
 }
 
 // ImageProcess represents a message for the image_process queue
 type ImageProcess struct {
+	Timestamp        time.Time `json:"timestamp"`
 	TraceID          string    `json:"trace_id"`
 	GroupID          string    `json:"group_id"`
-	TelegramID       int64     `json:"telegram_id"`
 	OriginalFilename string    `json:"original_filename"`
 	OriginalPath     string    `json:"original_path"`
 	ProcessedPath    string    `json:"processed_path"`
 	Metadata         Metadata  `json:"metadata"`
-	Timestamp        time.Time `json:"timestamp"`
+	TelegramID       int64     `json:"telegram_id"`
 }
 
 // ImageProcessed represents a message for the image_processed queue
 type ImageProcessed struct {
+	Timestamp        time.Time `json:"timestamp"`
 	TraceID          string    `json:"trace_id"`
 	GroupID          string    `json:"group_id"`
-	TelegramID       int64     `json:"telegram_id"`
 	TelegramUsername string    `json:"telegram_username"`
 	OriginalFilename string    `json:"original_filename"`
 	ProcessedPath    string    `json:"processed_path"`
 	Status           string    `json:"status"`
 	Error            string    `json:"error,omitempty"`
-	Timestamp        time.Time `json:"timestamp"`
+	TelegramID       int64     `json:"telegram_id"`
 }
 
 // Metadata represents image metadata
