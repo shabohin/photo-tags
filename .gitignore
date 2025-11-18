@@ -23,3 +23,14 @@ go.work.sum
 
 # env file
 .env
+.env.local
+
+# Local deployment data
+tmp/
+logs/
+bin/
+*.pid
+
+# Backup files
+backups/
+*.tar.gz
