@@ -166,7 +166,7 @@
 
 ### ✅ COMPLETED
 - [x] Build and startup scripts
-- [x] Docker Compose configuration with all 3 services
+- [x] Docker Compose configuration with all 5 core services
 - [x] Dockerfiles for all services
 - [x] Utility scripts (build.sh, start.sh, stop.sh, etc.)
 - [x] Environment variables template (.env.example)

@@ -10,12 +10,14 @@ This service automatically adds titles, descriptions, and keywords to image meta
 
 The project is built using a microservice architecture and includes the following components:
 
--   **Gateway Service** - receives images and sends results via Telegram API
+-   **Gateway Service** - receives images and sends results via Telegram API, provides Statistics API and DLQ admin interface
 -   **Analyzer Service** - generates metadata using free vision models from OpenRouter with automatic model selection
--   **Processor Service** - writes metadata to images
+-   **Processor Service** - writes metadata to images using ExifTool
 -   **File Watcher Service** - monitors directories for batch image processing without Telegram
--   **RabbitMQ** - message exchange between services
+-   **Dashboard Service** - provides web-based monitoring and statistics interface
+-   **RabbitMQ** - message exchange between services with Dead Letter Queue support
 -   **MinIO** - image storage
+-   **PostgreSQL** - statistics and history tracking
 
 ## Dynamic Model Selection
 
@@ -239,10 +241,12 @@ For detailed instructions, configuration options, and troubleshooting, see the [
 
 After startup, you can access the following interfaces:
 
+-   **Dashboard**: [http://localhost:8082](http://localhost:8082) (web-based monitoring and statistics)
+-   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
+-   **Statistics API**: [http://localhost:8080/api/v1/stats](http://localhost:8080/api/v1/stats) (see [Statistics API docs](docs/statistics-api.md))
+-   **Dead Letter Queue Admin**: [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs) (monitor and retry failed jobs)
 -   **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
--   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
--   **Dead Letter Queue Admin**: [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs) (monitor and retry failed jobs)
 -   **Datadog Dashboard**: [app.datadoghq.com](https://app.datadoghq.com/) (if configured)
 
 ## Service Logs
