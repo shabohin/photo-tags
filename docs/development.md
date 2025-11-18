@@ -13,7 +13,7 @@ This document outlines development workflows, best practices, and processes for 
 
 ### Prerequisites
 
--   Go 1.21+
+-   Go 1.24+
 -   Docker and Docker Compose
 -   Git
 -   Visual Studio Code (recommended)
@@ -190,13 +190,19 @@ go test ./services/gateway/...
 
 ## Continuous Integration
 
+**Status:** ✅ Fully implemented and operational
+
+The CI pipeline is configured in `.github/workflows/ci.yml` and runs automatically on:
+- Push to `main` or `develop` branches
+- Pull requests to `main` or `develop` branches
+
 We use GitHub Actions for CI/CD with a simplified approach based on make commands:
 
 -   Automated testing on each commit
--   Code coverage reporting
--   Linting checks
--   Docker image building
--   Security scanning with Gosec
+-   Code coverage reporting with Codecov
+-   Linting checks with golangci-lint
+-   Docker image building for all services
+-   Go binary builds for verification
 
 ### Simplified CI Structure
 

@@ -11,7 +11,7 @@ This document provides a detailed overview of the Photo Tags Service architectur
 
 ## System Overview
 
-Photo Tags Service uses a microservices architecture to process images and add metadata. The services communicate asynchronously through RabbitMQ message queues, and images are stored in MinIO object storage.
+Photo Tags Service uses a microservices architecture to process images and add metadata. The services communicate asynchronously through RabbitMQ message queues with Dead Letter Queue support, images are stored in MinIO object storage, and statistics are tracked in PostgreSQL database. The system includes Datadog integration for comprehensive monitoring and observability.
 
 ## Component Diagram
 
@@ -61,7 +61,7 @@ Storage:
 
 ### 1. Gateway Service
 
-The Gateway Service acts as the entry point for user interactions through a Telegram bot interface.
+The Gateway Service acts as the entry point for user interactions through a Telegram bot interface and provides REST APIs for statistics and administration.
 
 **Responsibilities:**
 
@@ -71,31 +71,39 @@ The Gateway Service acts as the entry point for user interactions through a Tele
 -   Publish image processing tasks to the `image_upload` queue
 -   Receive processed images from the `image_processed` queue
 -   Send processed images back to users
+-   Provide Statistics API (PostgreSQL-backed)
+-   Provide Dead Letter Queue admin interface
+-   Track processing history and errors
 
 **Technologies:**
 
 -   Go
 -   Telegram Bot API
 -   RabbitMQ client
+-   PostgreSQL
+-   MinIO SDK
 
 ### 2. Analyzer Service
 
-The Analyzer Service processes images with AI to generate appropriate metadata.
+The Analyzer Service processes images with AI to generate appropriate metadata using automatically selected free vision models.
 
 **Responsibilities:**
 
 -   Consume tasks from the `image_upload` queue
 -   Download images from MinIO
--   Interact with OpenRouter's GPT-4o to analyze images
+-   Automatically select best available free vision model from OpenRouter
+-   Interact with OpenRouter API using selected model to analyze images
+-   Handle rate limits with intelligent retry scheduling
 -   Generate metadata (title, description, keywords)
 -   Publish results to the `metadata_generated` queue
 
 **Technologies:**
 
 -   Go
--   OpenRouter API
+-   OpenRouter API with dynamic model selection
 -   MinIO SDK
 -   RabbitMQ client
+-   Model Selector service (periodic updates)
 
 ### 3. Processor Service
 
@@ -116,7 +124,44 @@ The Processor Service writes metadata into image files.
 -   MinIO SDK
 -   RabbitMQ client
 
-### 4. RabbitMQ
+### 4. Filewatcher Service
+
+The Filewatcher Service monitors directories for batch image processing without Telegram interface.
+
+**Responsibilities:**
+
+-   Monitor input directory for new images
+-   Process images in bulk
+-   Publish to the same `image_upload` queue
+-   Provide REST API for statistics and manual triggers
+-   Move processed images to output directory
+
+**Technologies:**
+
+-   Go
+-   File system monitoring
+-   RabbitMQ client
+-   MinIO SDK
+
+### 5. Dashboard Service
+
+The Dashboard Service provides a web-based interface for monitoring and statistics.
+
+**Responsibilities:**
+
+-   Display real-time processing statistics
+-   Show system health and status
+-   Provide visual analytics
+-   User-friendly interface for non-technical users
+
+**Technologies:**
+
+-   Go
+-   HTTP server
+-   Static file serving
+-   PostgreSQL for data retrieval
+
+### 6. RabbitMQ
 
 Message broker that enables asynchronous communication between services.
 
@@ -125,8 +170,16 @@ Message broker that enables asynchronous communication between services.
 -   `image_upload`: Messages about new images to process
 -   `metadata_generated`: Messages with generated metadata
 -   `image_processed`: Messages about completed image processing
+-   `dead_letter_queue`: Failed messages for manual inspection and retry
 
-### 5. MinIO
+**Features:**
+
+-   Dead Letter Exchange (DLX) for failed messages
+-   Message persistence
+-   Retry mechanisms
+-   Manual retry capability via Gateway admin interface
+
+### 7. MinIO
 
 Object storage for all images.
 
@@ -134,6 +187,22 @@ Object storage for all images.
 
 -   `original`: Original user-uploaded images
 -   `processed`: Images with embedded metadata
+
+### 8. PostgreSQL
+
+Relational database for statistics and history tracking.
+
+**Tables:**
+
+-   `images`: Image processing history
+-   `processing_stats`: Daily aggregated statistics
+-   `errors`: Detailed error tracking
+
+**Features:**
+
+-   JSONB support for flexible metadata storage
+-   Indexes for query optimization
+-   Statistics API backend
 
 ## Data Structures
 
@@ -217,7 +286,8 @@ Object storage for all images.
 
     - Analyzer Service consumes message from 'image_upload' queue
     - Analyzer downloads image from MinIO
-      | - Analyzer sends image to GPT-4o via OpenRouter for analysis
+    - Analyzer uses automatically selected free vision model from OpenRouter for analysis
+    - Analyzer handles rate limits with intelligent retry scheduling
     - Analyzer receives metadata (title, description, keywords)
     - Analyzer publishes metadata to 'metadata_generated' queue
 
@@ -236,12 +306,16 @@ Object storage for all images.
 
 ## Error Handling
 
-Each service implements basic error handling:
+Each service implements comprehensive error handling:
 
+-   Failed messages are automatically sent to Dead Letter Queue (DLQ)
 -   Failed operations result in error messages in the 'image_processed' queue
 -   Gateway Service informs users about processing failures
 -   All errors are logged with the related trace_id for debugging
--   Services implement retry mechanisms for transient failures
+-   Errors are tracked in PostgreSQL for analysis
+-   Services implement retry mechanisms with exponential backoff for transient failures
+-   Manual retry capability via DLQ admin interface
+-   Datadog integration for error monitoring and alerting
 
 ## Logging and Tracing
 
