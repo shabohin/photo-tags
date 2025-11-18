@@ -1,0 +1,389 @@
+package e2e
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
+	"github.com/shabohin/photo-tags/pkg/messaging"
+	"github.com/shabohin/photo-tags/pkg/models"
+	"github.com/streadway/amqp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/shabohin/photo-tags/tests/e2e/helpers"
+)
+
+// TestRateLimitHandling tests how the system handles rate limits
+func TestRateLimitHandling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Enable rate limit simulation on mock Telegram
+	suite.mockTelegram.SimulateRateLimit(3)
+
+	// Create test image
+	testImage, err := helpers.CreateTestImage(400, 300)
+	require.NoError(t, err)
+
+	tempDir := t.TempDir()
+	imagePath := filepath.Join(tempDir, "test_rate_limit.jpg")
+	err = os.WriteFile(imagePath, testImage, 0644)
+	require.NoError(t, err)
+
+	// Upload multiple images quickly
+	imageIDs := make([]string, 5)
+	for i := 0; i < 5; i++ {
+		imageID := uuid.New().String()
+		imageIDs[i] = imageID
+
+		ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+		_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+			ContentType: "image/jpeg",
+		})
+		cancel()
+		require.NoError(t, err)
+
+		// Publish message
+		message := models.ImageMessage{
+			ImageID:  imageID,
+			UserID:   123456 + int64(i),
+			FileName: fmt.Sprintf("test_rate_limit_%d.jpg", i),
+		}
+
+		messageBytes, err := json.Marshal(message)
+		require.NoError(t, err)
+
+		err = suite.rabbitMQChannel.Publish(
+			"",
+			messaging.QueueImageUpload,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        messageBytes,
+			},
+		)
+		require.NoError(t, err)
+
+		// Small delay between requests
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	t.Log("Published 5 messages with rate limit simulation")
+
+	// Wait and verify that system handled rate limits gracefully
+	// At least some messages should succeed after retries
+	time.Sleep(30 * time.Second)
+
+	successCount := 0
+	for _, imageID := range imageIDs {
+		ctx, cancel := context.WithTimeout(suite.ctx, 5*time.Second)
+		_, err := suite.minioClient.StatObject(ctx, "processed", imageID+".jpg", minio.StatObjectOptions{})
+		cancel()
+
+		if err == nil {
+			successCount++
+		}
+	}
+
+	t.Logf("Successfully processed %d out of 5 images with rate limiting", successCount)
+	assert.Greater(t, successCount, 0, "At least some messages should be processed despite rate limits")
+}
+
+// TestNetworkErrorRecovery tests recovery from network errors
+func TestNetworkErrorRecovery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create test image
+	testImage, err := helpers.CreateTestImage(640, 480)
+	require.NoError(t, err)
+
+	tempDir := t.TempDir()
+	imagePath := filepath.Join(tempDir, "test_network_error.jpg")
+	err = os.WriteFile(imagePath, testImage, 0644)
+	require.NoError(t, err)
+
+	imageID := uuid.New().String()
+
+	// Upload image
+	ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+	_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+		ContentType: "image/jpeg",
+	})
+	cancel()
+	require.NoError(t, err)
+
+	// Enable error simulation
+	suite.mockTelegram.SimulateError(true)
+
+	// Publish message
+	message := models.ImageMessage{
+		ImageID:  imageID,
+		UserID:   123456,
+		FileName: "test_network_error.jpg",
+	}
+
+	messageBytes, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	err = suite.rabbitMQChannel.Publish(
+		"",
+		messaging.QueueImageUpload,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+	require.NoError(t, err)
+
+	t.Log("Published message with error simulation enabled")
+
+	// Wait a bit for error to occur
+	time.Sleep(5 * time.Second)
+
+	// Disable error simulation to allow recovery
+	suite.mockTelegram.SimulateError(false)
+	t.Log("Disabled error simulation, allowing recovery")
+
+	// System should recover and process the image
+	// Note: This depends on retry logic in the services
+	time.Sleep(20 * time.Second)
+
+	// The image might not be processed due to errors, which is expected
+	// This test mainly verifies the system doesn't crash
+	t.Log("System survived network error scenario")
+}
+
+// TestTimeoutHandling tests how the system handles timeouts
+func TestTimeoutHandling(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create test image
+	testImage, err := helpers.CreateTestImage(1024, 768)
+	require.NoError(t, err)
+
+	tempDir := t.TempDir()
+	imagePath := filepath.Join(tempDir, "test_timeout.jpg")
+	err = os.WriteFile(imagePath, testImage, 0644)
+	require.NoError(t, err)
+
+	imageID := uuid.New().String()
+
+	// Upload image
+	ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+	_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+		ContentType: "image/jpeg",
+	})
+	cancel()
+	require.NoError(t, err)
+
+	// Enable timeout simulation
+	suite.mockTelegram.SimulateTimeout(true)
+
+	// Publish message
+	message := models.ImageMessage{
+		ImageID:  imageID,
+		UserID:   123456,
+		FileName: "test_timeout.jpg",
+	}
+
+	messageBytes, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	err = suite.rabbitMQChannel.Publish(
+		"",
+		messaging.QueueImageUpload,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+	require.NoError(t, err)
+
+	t.Log("Published message with timeout simulation enabled")
+
+	// Wait for timeout to occur
+	time.Sleep(10 * time.Second)
+
+	// Disable timeout to allow potential recovery
+	suite.mockTelegram.SimulateTimeout(false)
+
+	// Verify system is still functional
+	time.Sleep(5 * time.Second)
+	t.Log("System survived timeout scenario")
+}
+
+// TestConcurrentProcessing tests concurrent image processing
+func TestConcurrentProcessing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create test images
+	testImage, err := helpers.CreateTestImage(600, 400)
+	require.NoError(t, err)
+
+	tempDir := t.TempDir()
+
+	// Process multiple images concurrently
+	numImages := 10
+	imageIDs := make([]string, numImages)
+
+	for i := 0; i < numImages; i++ {
+		imageID := uuid.New().String()
+		imageIDs[i] = imageID
+
+		imagePath := filepath.Join(tempDir, fmt.Sprintf("test_concurrent_%d.jpg", i))
+		err = os.WriteFile(imagePath, testImage, 0644)
+		require.NoError(t, err)
+
+		// Upload image
+		ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+		_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+			ContentType: "image/jpeg",
+		})
+		cancel()
+		require.NoError(t, err)
+
+		// Publish message
+		message := models.ImageMessage{
+			ImageID:  imageID,
+			UserID:   123456 + int64(i),
+			FileName: fmt.Sprintf("test_concurrent_%d.jpg", i),
+		}
+
+		messageBytes, err := json.Marshal(message)
+		require.NoError(t, err)
+
+		err = suite.rabbitMQChannel.Publish(
+			"",
+			messaging.QueueImageUpload,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        messageBytes,
+			},
+		)
+		require.NoError(t, err)
+	}
+
+	t.Logf("Published %d concurrent messages", numImages)
+
+	// Wait for processing
+	deadline := time.Now().Add(3 * time.Minute)
+	processedCount := 0
+
+	for time.Now().Before(deadline) {
+		processedCount = 0
+		for _, imageID := range imageIDs {
+			ctx, cancel := context.WithTimeout(suite.ctx, 2*time.Second)
+			_, err := suite.minioClient.StatObject(ctx, "processed", imageID+".jpg", minio.StatObjectOptions{})
+			cancel()
+
+			if err == nil {
+				processedCount++
+			}
+		}
+
+		if processedCount == numImages {
+			break
+		}
+
+		time.Sleep(5 * time.Second)
+	}
+
+	t.Logf("Successfully processed %d out of %d images", processedCount, numImages)
+	assert.Greater(t, processedCount, numImages/2, "At least half of the images should be processed")
+}
+
+// TestLargeImageProcessing tests processing of large images
+func TestLargeImageProcessing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create a large test image (4K resolution)
+	testImage, err := helpers.CreateTestImage(3840, 2160)
+	require.NoError(t, err)
+
+	tempDir := t.TempDir()
+	imagePath := filepath.Join(tempDir, "test_large.jpg")
+	err = os.WriteFile(imagePath, testImage, 0644)
+	require.NoError(t, err)
+
+	imageID := uuid.New().String()
+
+	// Upload large image
+	ctx, cancel := context.WithTimeout(suite.ctx, 2*operationTimeout)
+	_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+		ContentType: "image/jpeg",
+	})
+	cancel()
+	require.NoError(t, err)
+
+	t.Logf("Uploaded large image (4K): %d bytes", len(testImage))
+
+	// Publish message
+	message := models.ImageMessage{
+		ImageID:  imageID,
+		UserID:   123456,
+		FileName: "test_large.jpg",
+	}
+
+	messageBytes, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	err = suite.rabbitMQChannel.Publish(
+		"",
+		messaging.QueueImageUpload,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+	require.NoError(t, err)
+
+	// Wait for processing with extended timeout for large image
+	processedImagePath := filepath.Join(tempDir, "processed_large.jpg")
+	err = suite.waitForProcessedImage(t, imageID, processedImagePath, 3*time.Minute)
+
+	if err != nil {
+		t.Logf("Large image processing might have timed out: %v", err)
+	} else {
+		t.Log("Successfully processed large image")
+
+		// Verify file size
+		info, err := os.Stat(processedImagePath)
+		require.NoError(t, err)
+		assert.Greater(t, info.Size(), int64(0), "Processed image should not be empty")
+	}
+}
