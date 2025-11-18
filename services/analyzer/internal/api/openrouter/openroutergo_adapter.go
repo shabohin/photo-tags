@@ -68,13 +68,3 @@ func (a *OpenRouterGoAdapter) AnalyzeImage(
 
 	return metadata, nil
 }
-
-// GetAvailableModels is not supported by the OpenRouterGo adapter
-func (a *OpenRouterGoAdapter) GetAvailableModels(ctx context.Context) ([]Model, error) {
-	return nil, fmt.Errorf("GetAvailableModels is not supported by OpenRouterGo adapter")
-}
-
-// SelectBestFreeVisionModel is not supported by the OpenRouterGo adapter
-func (a *OpenRouterGoAdapter) SelectBestFreeVisionModel(models []Model) (*Model, error) {
-	return nil, fmt.Errorf("SelectBestFreeVisionModel is not supported by OpenRouterGo adapter")
-}

@@ -13,21 +13,19 @@ import (
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
-	"github.com/shabohin/photo-tags/services/analyzer/internal/selector"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
 )
 
 type App struct {
-	shutdown      chan struct{}
-	consumer      *rabbitmq.Consumer
-	publisher     *rabbitmq.Publisher
-	minioClient   *minio.Client
-	processor     *service.MessageProcessorService
-	modelSelector *selector.ModelSelector
-	logger        *logrus.Logger
-	shutdownWg    sync.WaitGroup
-	workerCount   int
+	shutdown    chan struct{}
+	consumer    *rabbitmq.Consumer
+	publisher   *rabbitmq.Publisher
+	minioClient *minio.Client
+	processor   *service.MessageProcessorService
+	logger      *logrus.Logger
+	shutdownWg  sync.WaitGroup
+	workerCount int
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -70,14 +68,6 @@ func New(cfg *config.Config) (*App, error) {
 			logger,
 		)
 	}
-
-	// Initialize Model Selector for automatic model selection
-	modelSelector := selector.NewModelSelector(
-		openRouterClient,
-		logger,
-		cfg.OpenRouter.ModelCheckInterval,
-		cfg.OpenRouter.Model, // fallback model
-	)
 
 	// Initialize RabbitMQ publisher
 	publisher, err := rabbitmq.NewPublisher(
@@ -122,14 +112,13 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	return &App{
-		consumer:      consumer,
-		publisher:     publisher,
-		minioClient:   minioClient,
-		processor:     processor,
-		modelSelector: modelSelector,
-		logger:        logger,
-		workerCount:   cfg.Worker.Concurrency,
-		shutdown:      make(chan struct{}),
+		consumer:    consumer,
+		publisher:   publisher,
+		minioClient: minioClient,
+		processor:   processor,
+		logger:      logger,
+		workerCount: cfg.Worker.Concurrency,
+		shutdown:    make(chan struct{}),
 	}, nil
 }
 
@@ -137,9 +126,6 @@ func (a *App) Start() error {
 	a.logger.WithField("worker_count", a.workerCount).Info("Starting workers")
 
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// Start Model Selector
-	a.modelSelector.Start(ctx)
 
 	// Start signal handler
 	go func() {
@@ -212,9 +198,6 @@ func (a *App) Shutdown() {
 	a.logger.Info("Shutting down application")
 	close(a.shutdown)
 	a.shutdownWg.Wait()
-
-	// Stop Model Selector
-	a.modelSelector.Stop()
 
 	if err := a.consumer.Close(); err != nil {
 		a.logger.WithError(err).Error("Error closing consumer")

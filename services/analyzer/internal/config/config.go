@@ -32,7 +32,6 @@ type Config struct {
 		Temperature            float64
 		MaxTokens              int
 		UseOpenRouterGoAdapter bool
-		ModelCheckInterval     time.Duration
 	}
 
 	MinIO struct {
@@ -83,7 +82,6 @@ func New() *Config {
 		"Return strictly in JSON format with fields 'title', 'description' and 'keywords'."
 	cfg.OpenRouter.Prompt = getEnv("OPENROUTER_PROMPT", defaultPrompt)
 	cfg.OpenRouter.UseOpenRouterGoAdapter = getEnvAsBool("USE_OPENROUTERGO_ADAPTER", false)
-	cfg.OpenRouter.ModelCheckInterval = getEnvAsDuration("OPENROUTER_MODEL_CHECK_INTERVAL", 24*time.Hour)
 
 	// Log Config
 	cfg.Log.Level = getEnv("LOG_LEVEL", "info")
