@@ -30,3 +30,7 @@ tmp/
 logs/
 bin/
 *.pid
+
+# Backup files
+backups/
+*.tar.gz

@@ -1,0 +1,23 @@
+# Photo Tags Backup Crontab
+# This file contains cron jobs for automated backups
+#
+# Installation:
+# 1. Edit this file and set the correct PROJECT_DIR path
+# 2. Run: crontab scripts/backup.crontab
+# 3. Verify: crontab -l
+#
+# Note: Make sure backup.sh has execute permissions (chmod +x scripts/backup.sh)
+
+# Environment variables
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PROJECT_DIR=/path/to/photo-tags
+
+# Daily backup at 2:00 AM
+# Format: minute hour day month weekday command
+0 2 * * * cd $PROJECT_DIR && ./scripts/backup.sh >> /var/log/photo-tags-backup.log 2>&1
+
+# Alternative schedules (commented out):
+# Every 6 hours: 0 */6 * * * cd $PROJECT_DIR && ./scripts/backup.sh >> /var/log/photo-tags-backup.log 2>&1
+# Every 12 hours: 0 */12 * * * cd $PROJECT_DIR && ./scripts/backup.sh >> /var/log/photo-tags-backup.log 2>&1
+# Weekly (Sunday at 3:00 AM): 0 3 * * 0 cd $PROJECT_DIR && ./scripts/backup.sh >> /var/log/photo-tags-backup.log 2>&1
