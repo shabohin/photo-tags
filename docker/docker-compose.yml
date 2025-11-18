@@ -105,6 +105,26 @@ services:
         volumes:
             - processor_temp:/tmp/processor
 
+    dashboard:
+        container_name: dashboard
+        build:
+            context: ../services/dashboard
+            dockerfile: Dockerfile
+        ports:
+            - '3000:3000'
+        depends_on:
+            rabbitmq:
+                condition: service_healthy
+        environment:
+            - DASHBOARD_PORT=3000
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - GATEWAY_URL=http://gateway:8080
+            - ANALYZER_URL=http://analyzer:8081
+            - PROCESSOR_URL=http://processor:8082
+            - MINIO_URL=http://localhost:9001
+            - RABBITMQ_MGMT_URL=http://localhost:15672
+        restart: unless-stopped
+
     filewatcher:
         container_name: filewatcher
         build:
@@ -113,7 +133,7 @@ services:
             args:
                 SERVICE: filewatcher
         ports:
-            - '8081:8081'
+            - '8082:8081'
         depends_on:
             rabbitmq:
                 condition: service_healthy
