@@ -19,6 +19,7 @@ import (
 	"github.com/shabohin/photo-tags/pkg/models"
 	"github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
+	"github.com/shabohin/photo-tags/services/gateway/internal/monitoring"
 )
 
 // Bot represents a Telegram bot
@@ -28,6 +29,7 @@ type Bot struct {
 	minio    storage.MinIOInterface
 	rabbitmq messaging.RabbitMQInterface
 	cfg      *config.Config
+	metrics  *monitoring.Metrics
 }
 
 // BotLogger extends the Logger with group ID
@@ -67,6 +69,7 @@ func NewBot(
 		minio:    minio,
 		rabbitmq: rabbitmq,
 		cfg:      cfg,
+		metrics:  monitoring.NewMetrics(),
 	}, nil
 }
 
@@ -120,6 +123,9 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 
 	// Check if message contains photos or documents
 	if len(update.Message.Photo) > 0 {
+		// Record metric
+		b.metrics.Incr("telegram.messages.received", []string{"type:photo"})
+
 		// Handle photo
 		groupID := uuid.New().String()
 		botLog := NewBotLogger(log.WithGroupID(groupID), groupID)
@@ -132,6 +138,7 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		// Get file URL
 		fileURL, err := b.api.GetFileDirectURL(fileID)
 		if err != nil {
+			b.metrics.Incr("telegram.messages.errors", []string{"type:photo", "error:get_file_url"})
 			botLog.Error("Failed to get file URL", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to get file URL")
 			return
@@ -139,11 +146,17 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 
 		// Process photo
 		if err := b.processMedia(ctx, botLog, update.Message, fileID, "photo.jpg", fileURL); err != nil {
+			b.metrics.Incr("telegram.messages.errors", []string{"type:photo", "error:process_media"})
 			botLog.Error("Failed to process photo", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process photo")
 			return
 		}
+
+		b.metrics.Incr("telegram.messages.processed", []string{"type:photo"})
 	} else if update.Message.Document != nil {
+		// Record metric
+		b.metrics.Incr("telegram.messages.received", []string{"type:document"})
+
 		// Handle document
 		document := update.Message.Document
 		fileName := document.FileName
@@ -152,6 +165,7 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		// Check file extension
 		ext := strings.ToLower(filepath.Ext(fileName))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			b.metrics.Incr("telegram.messages.errors", []string{"type:document", "error:unsupported_format"})
 			b.sendErrorMessage(update.Message.Chat.ID, "Only JPG and PNG files are supported")
 			return
 		}
@@ -163,6 +177,7 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		// Get file URL
 		fileURL, err := b.api.GetFileDirectURL(fileID)
 		if err != nil {
+			b.metrics.Incr("telegram.messages.errors", []string{"type:document", "error:get_file_url"})
 			botLog.Error("Failed to get file URL", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to get file URL")
 			return
@@ -170,13 +185,21 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 
 		// Process document
 		if err := b.processMedia(ctx, botLog, update.Message, fileID, fileName, fileURL); err != nil {
+			b.metrics.Incr("telegram.messages.errors", []string{"type:document", "error:process_media"})
 			botLog.Error("Failed to process document", err)
 			b.sendErrorMessage(update.Message.Chat.ID, "Failed to process document")
 			return
 		}
+
+		b.metrics.Incr("telegram.messages.processed", []string{"type:document"})
 	} else if update.Message.Text != "" {
+		// Record metric
+		b.metrics.Incr("telegram.messages.received", []string{"type:text"})
+
 		// Handle text message
 		b.handleTextMessage(update.Message)
+
+		b.metrics.Incr("telegram.messages.processed", []string{"type:text"})
 	}
 }
 
@@ -216,8 +239,18 @@ func (b *Bot) processMedia(
 
 	// Upload file to MinIO
 	minioObjectPath := fmt.Sprintf("%s/%s", traceID, fileName)
+	uploadStart := time.Now()
 	if err := b.minio.UploadFile(ctx, storage.BucketOriginal, minioObjectPath, resp.Body, contentType); err != nil {
+		b.metrics.Incr("image.upload.errors", []string{"error:minio_upload"})
 		return fmt.Errorf("failed to upload file to MinIO: %w", err)
+	}
+
+	// Record metrics
+	uploadDuration := time.Since(uploadStart).Milliseconds()
+	b.metrics.Timing("image.upload.duration", uploadDuration, []string{})
+	b.metrics.Incr("image.uploaded", []string{})
+	if resp.ContentLength > 0 {
+		b.metrics.Histogram("image.size.bytes", float64(resp.ContentLength), []string{})
 	}
 
 	// Send acknowledgement message
@@ -236,8 +269,11 @@ func (b *Bot) processMedia(
 
 	// Publish upload message
 	if err := b.rabbitmq.PublishMessage(messaging.QueueImageUpload, uploadMessage); err != nil {
+		b.metrics.Incr("rabbitmq.messages.publish.errors", []string{"queue:image_upload", "error:publish_failed"})
 		return fmt.Errorf("failed to publish message: %w", err)
 	}
+
+	b.metrics.Incr("rabbitmq.messages.published", []string{"queue:image_upload"})
 
 	log.Info("Image uploaded and message published", uploadMessage)
 
@@ -246,6 +282,9 @@ func (b *Bot) processMedia(
 
 // handleProcessedImage handles a processed image
 func (b *Bot) handleProcessedImage(data []byte) error {
+	// Record consumed message
+	b.metrics.Incr("rabbitmq.messages.consumed", []string{"queue:image_processed"})
+
 	var message models.ImageProcessed
 	if err := json.Unmarshal(data, &message); err != nil {
 		return fmt.Errorf("failed to unmarshal message: %w", err)
