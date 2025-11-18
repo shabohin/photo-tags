@@ -12,11 +12,12 @@ import (
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/storage"
-	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
-	"github.com/shabohin/photo-tags/services/gateway/internal/config"
-	"github.com/shabohin/photo-tags/services/gateway/internal/handler"
-	"github.com/shabohin/photo-tags/services/gateway/internal/monitoring"
-	"github.com/shabohin/photo-tags/services/gateway/internal/telegram"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/api"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/config"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/consumer"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/processor"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/statistics"
+	"github.com/shabohin/photo-tags/services/filewatcher/internal/watcher"
 )
 
 func retry(attempts int, delay time.Duration, logger *logging.Logger, operationName string, fn func() error) error {
@@ -34,8 +35,8 @@ func retry(attempts int, delay time.Duration, logger *logging.Logger, operationN
 }
 
 func main() {
-	fmt.Println("Starting Gateway Service...")
-	log.Println("Gateway Service is up and running")
+	fmt.Println("Starting File Watcher Service...")
+	log.Println("File Watcher Service is up and running")
 
 	// Create context that will be canceled on SIGINT or SIGTERM
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,19 +55,11 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// Create logger
-	logger := logging.NewLogger("gateway")
-	logger.Info("Starting Gateway Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
+	logger := logging.NewLogger("filewatcher")
+	logger.Info("Starting File Watcher Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
 
-	// Initialize Datadog monitoring
-	if err := monitoring.Init("gateway", "v1.0.0"); err != nil {
-		logger.Error("Failed to initialize Datadog monitoring", err)
-		// Continue anyway as monitoring is optional
-	} else if monitoring.IsEnabled() {
-		logger.Info("Datadog monitoring initialized successfully", nil)
-		defer monitoring.Stop()
-	} else {
-		logger.Info("Datadog monitoring disabled (DD_API_KEY not set)", nil)
-	}
+	// Initialize statistics
+	stats := statistics.NewStatistics()
 
 	// Initialize dependencies
 	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)
@@ -76,56 +69,54 @@ func main() {
 	}
 	defer rabbitmqClient.Close()
 
-	// Initialize batch processing components
-	batchStorage := batch.NewStorage()
-	wsHub := batch.NewHub(logger)
-	batchProcessor := batch.NewProcessor(batchStorage, minioClient, rabbitmqClient, wsHub, logger)
-	batchHandler := batch.NewHandler(batchProcessor, batchStorage, wsHub, logger)
+	// Create processor
+	proc := processor.NewProcessor(cfg, logger, minioClient, rabbitmqClient, stats)
 
-	// Start WebSocket hub
-	go wsHub.Run()
-	logger.Info("WebSocket hub started", nil)
+	// Create watcher
+	watch := watcher.NewWatcher(cfg, logger, proc)
 
-	// Start batch processing consumer
-	if err := batchProcessor.StartProcessedImageConsumer(ctx); err != nil {
-		logger.Error("Failed to start batch consumer", err)
+	// Create consumer
+	cons := consumer.NewConsumer(cfg, logger, minioClient, rabbitmqClient, stats)
+
+	// Create API server
+	apiServer := api.NewServer(cfg, logger, watch, stats)
+
+	// Start consumer
+	if err := cons.Start(ctx); err != nil {
+		logger.Error("Failed to start consumer", err)
 		os.Exit(1)
 	}
-	logger.Info("Batch processing consumer started", nil)
+	logger.Info("Consumer started", map[string]interface{}{
+		"queue": messaging.QueueImageProcessed,
+	})
 
-	// Create and start HTTP handler
-	httpHandler := handler.NewHandler(logger, cfg, batchHandler, rabbitmqClient)
+	// Start watcher
 	go func() {
-		if err := httpHandler.StartServer(ctx); err != nil {
-			logger.Error("HTTP server error", err)
+		if err := watch.Start(ctx); err != nil {
+			logger.Error("Watcher error", err)
 		}
 	}()
-	logger.Info("HTTP server started", nil)
+	logger.Info("File watcher started", map[string]interface{}{
+		"input_dir":     cfg.InputDir,
+		"output_dir":    cfg.OutputDir,
+		"use_fsnotify":  cfg.UseFsnotify,
+		"scan_interval": cfg.ScanInterval,
+	})
 
-	// Create and start Telegram bot if token is provided
-	if cfg.TelegramToken != "" {
-		bot, err := telegram.NewBot(cfg, logger, minioClient, rabbitmqClient)
-		if err != nil {
-			logger.Error("Failed to create Telegram bot", err)
-			os.Exit(1)
+	// Start API server
+	go func() {
+		if err := apiServer.Start(ctx); err != nil {
+			logger.Error("API server error", err)
 		}
-
-		go func() {
-			if err := bot.Start(ctx); err != nil {
-				logger.Error("Telegram bot error", err)
-			}
-		}()
-		logger.Info("Telegram bot started", map[string]interface{}{
-			"bot_username": bot.GetUsername(),
-		})
-	} else {
-		logger.Info("Telegram token not provided, bot will not be started", nil)
-	}
+	}()
+	logger.Info("API server started", map[string]interface{}{
+		"port": cfg.ServerPort,
+	})
 
 	// Block until context is canceled
-	logger.Info("Gateway service running. Press Ctrl+C to stop.", nil)
+	logger.Info("File Watcher Service running. Press Ctrl+C to stop.", nil)
 	<-ctx.Done()
-	logger.Info("Shutting down Gateway Service", nil)
+	logger.Info("Shutting down File Watcher Service", nil)
 
 	// Allow some time for graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -135,7 +126,7 @@ func main() {
 	case <-shutdownCtx.Done():
 		logger.Info("Shutdown timed out, forcing exit", nil)
 	case <-time.After(2 * time.Second):
-		logger.Info("Gateway Service shutdown complete", nil)
+		logger.Info("File Watcher Service shutdown complete", nil)
 	}
 }
 
@@ -166,11 +157,19 @@ func initializeDependencies(
 		return nil, nil, fmt.Errorf("failed to create MinIO client after retries: %w", err)
 	}
 
-	err = retry(5, 2*time.Second, logger, "MinIO bucket check", func() error {
+	// Ensure buckets exist
+	err = retry(5, 2*time.Second, logger, "MinIO bucket check (original)", func() error {
 		return minioClient.EnsureBucketExists(ctx, storage.BucketOriginal)
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to check MinIO connection after retries: %w", err)
+		return nil, nil, fmt.Errorf("failed to ensure original bucket exists: %w", err)
+	}
+
+	err = retry(5, 2*time.Second, logger, "MinIO bucket check (processed)", func() error {
+		return minioClient.EnsureBucketExists(ctx, storage.BucketProcessed)
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to ensure processed bucket exists: %w", err)
 	}
 
 	logger.Info("Initializing RabbitMQ client", map[string]interface{}{
@@ -190,11 +189,6 @@ func initializeDependencies(
 	}
 
 	logger.Info("Declaring RabbitMQ queues", nil)
-
-	// Declare dead letter queue
-	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueDeadLetter); err != nil {
-		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueDeadLetter, err)
-	}
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageUpload); err != nil {
 		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageUpload, err)

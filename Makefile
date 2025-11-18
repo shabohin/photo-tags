@@ -127,3 +127,40 @@ deps-clean: ## Clean and reinstall dependencies
 	@cd services/processor && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
 	@cd pkg && $(GOCMD) clean -modcache && $(GOCMD) mod download && $(GOCMD) mod tidy
 	@echo "$(GREEN)Dependencies cleaned and reinstalled!$(RESET)"
+
+##@ Local Deployment
+
+.PHONY: install-local
+install-local: ## Install dependencies for local deployment (no Docker)
+	@echo "$(YELLOW)Installing local dependencies...$(RESET)"
+	@./scripts/install-local.sh
+	@echo "$(GREEN)Local dependencies installed!$(RESET)"
+
+.PHONY: local-start
+local-start: ## Start all services locally (no Docker)
+	@echo "$(YELLOW)Starting services locally...$(RESET)"
+	@./scripts/run-local.sh start
+
+.PHONY: local-stop
+local-stop: ## Stop all local services
+	@echo "$(YELLOW)Stopping local services...$(RESET)"
+	@./scripts/run-local.sh stop
+
+.PHONY: local-restart
+local-restart: ## Restart all local services
+	@echo "$(YELLOW)Restarting local services...$(RESET)"
+	@./scripts/run-local.sh restart
+
+.PHONY: local-status
+local-status: ## Show status of local services
+	@./scripts/run-local.sh status
+
+.PHONY: local-logs
+local-logs: ## Tail logs of all local services
+	@./scripts/run-local.sh logs
+
+.PHONY: local-build
+local-build: ## Build services for local deployment
+	@echo "$(YELLOW)Building services for local deployment...$(RESET)"
+	@./scripts/run-local.sh build
+	@echo "$(GREEN)Services built successfully!$(RESET)"

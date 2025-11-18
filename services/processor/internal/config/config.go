@@ -16,6 +16,10 @@ type Config struct {
 		Format string
 	}
 
+	HTTP struct {
+		Port int
+	}
+
 	RabbitMQ struct {
 		URL               string
 		ConsumerQueue     string
@@ -53,6 +57,9 @@ type Config struct {
 
 func New() *Config {
 	cfg := &Config{}
+
+	// HTTP Config
+	cfg.HTTP.Port = getEnvAsInt("HTTP_PORT", 8082)
 
 	// RabbitMQ Config
 	cfg.RabbitMQ.URL = getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")

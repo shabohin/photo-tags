@@ -70,13 +70,34 @@ func (c *Consumer) connect() error {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
 
+	// First, declare the dead letter queue
+	dlqName := "dead_letter_queue"
+	_, err = c.channel.QueueDeclare(
+		dlqName,
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		if closeErr := c.conn.Close(); closeErr != nil {
+			c.logger.WithError(closeErr).Error("Failed to close connection during cleanup")
+		}
+		return fmt.Errorf("failed to declare dead letter queue: %w", err)
+	}
+
+	// Then declare the main queue with DLQ configuration
 	_, err = c.channel.QueueDeclare(
 		c.queueName,
 		true,  // durable
 		false, // delete when unused
 		false, // exclusive
 		false, // no-wait
-		nil,   // arguments
+		amqp.Table{
+			"x-dead-letter-exchange":    "",
+			"x-dead-letter-routing-key": dlqName,
+		},
 	)
 	if err != nil {
 		if closeErr := c.conn.Close(); closeErr != nil {
@@ -149,8 +170,9 @@ func (c *Consumer) Consume(ctx context.Context, handler func(message []byte) err
 
 			err := handler(msg.Body)
 			if err != nil {
-				c.logger.WithError(err).Error("Failed to process message")
-				if err := msg.Nack(false, true); err != nil {
+				c.logger.WithError(err).Error("Failed to process message, sending to DLQ")
+				// Nack with requeue=false to send message to dead letter queue
+				if err := msg.Nack(false, false); err != nil {
 					c.logger.WithError(err).Error("Failed to nack message")
 				}
 			} else {

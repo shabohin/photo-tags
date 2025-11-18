@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/shabohin/photo-tags/pkg/logging"
+	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 )
@@ -17,14 +18,16 @@ type Handler struct {
 	logger       *logging.Logger
 	cfg          *config.Config
 	batchHandler *batch.Handler
+	adminHandler *AdminHandler
 }
 
 // NewHandler creates a new Handler
-func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler) *Handler {
+func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler, rabbitmqClient messaging.RabbitMQInterface) *Handler {
 	return &Handler{
 		logger:       logger,
 		cfg:          cfg,
 		batchHandler: batchHandler,
+		adminHandler: NewAdminHandler(logger, rabbitmqClient),
 	}
 }
 
@@ -57,6 +60,11 @@ func (h *Handler) SetupRoutes() http.Handler {
 	if h.batchHandler != nil {
 		h.batchHandler.SetupRoutes(mux)
 	}
+
+	// Admin routes
+	mux.HandleFunc("/admin/failed-jobs", h.adminHandler.FailedJobsUI)
+	mux.HandleFunc("/admin/failed-jobs/api", h.adminHandler.GetFailedJobs)
+	mux.HandleFunc("/admin/failed-jobs/requeue", h.adminHandler.RequeueFailedJob)
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

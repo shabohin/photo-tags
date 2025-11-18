@@ -13,6 +13,7 @@ import (
 	"github.com/shabohin/photo-tags/services/processor/internal/config"
 	"github.com/shabohin/photo-tags/services/processor/internal/domain/service"
 	"github.com/shabohin/photo-tags/services/processor/internal/exiftool"
+	"github.com/shabohin/photo-tags/services/processor/internal/handler"
 	"github.com/shabohin/photo-tags/services/processor/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/processor/internal/transport/rabbitmq"
 )
@@ -25,9 +26,11 @@ type App struct {
 	minioClient *minio.Client
 	exifTool    *exiftool.Client
 	processor   *service.MessageProcessorService
+	httpHandler *handler.Handler
 	logger      *logrus.Logger
 	shutdownWg  sync.WaitGroup
 	workerCount int
+	cfg         *config.Config
 }
 
 // New creates and initializes a new application
@@ -119,15 +122,28 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize HTTP handler for health checks
+	httpHandler := handler.NewHandler(
+		logger,
+		cfg,
+		consumer,
+		publisher,
+		minioClient,
+		exifToolClient,
+		cfg.Worker.Concurrency,
+	)
+
 	return &App{
 		consumer:    consumer,
 		publisher:   publisher,
 		minioClient: minioClient,
 		exifTool:    exifToolClient,
 		processor:   messageProcessor,
+		httpHandler: httpHandler,
 		logger:      logger,
 		workerCount: cfg.Worker.Concurrency,
 		shutdown:    make(chan struct{}),
+		cfg:         cfg,
 	}, nil
 }
 
@@ -136,6 +152,13 @@ func (a *App) Start() error {
 	a.logger.WithField("worker_count", a.workerCount).Info("Starting workers")
 
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start HTTP server for health checks
+	go func() {
+		if err := a.httpHandler.StartServer(ctx); err != nil {
+			a.logger.WithError(err).Error("HTTP server error")
+		}
+	}()
 
 	// Start signal handler
 	go func() {
@@ -151,8 +174,14 @@ func (a *App) Start() error {
 	for i := 0; i < a.workerCount; i++ {
 		workerID := i
 		a.shutdownWg.Add(1)
+		a.httpHandler.SetActiveWorkers(i + 1)
 		go func() {
 			defer a.shutdownWg.Done()
+			defer func() {
+				// Decrement active workers on exit
+				activeWorkers := a.httpHandler.GetActiveWorkers()
+				a.httpHandler.SetActiveWorkers(activeWorkers - 1)
+			}()
 			a.startWorker(ctx, workerID)
 		}()
 	}

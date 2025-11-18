@@ -105,6 +105,37 @@ services:
         volumes:
             - processor_temp:/tmp/processor
 
+    filewatcher:
+        container_name: filewatcher
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile.service
+            args:
+                SERVICE: filewatcher
+        ports:
+            - '8081:8081'
+        depends_on:
+            rabbitmq:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
+        environment:
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - MINIO_ENDPOINT=minio:9000
+            - MINIO_ACCESS_KEY=minioadmin
+            - MINIO_SECRET_KEY=minioadmin
+            - INPUT_DIR=/app/input
+            - OUTPUT_DIR=/app/output
+            - PROCESSED_DIR=/app/input/processed
+            - SCAN_INTERVAL_SECONDS=5
+            - USE_FSNOTIFY=true
+            - MAX_FILE_SIZE_MB=50
+            - SERVER_PORT=8081
+        restart: unless-stopped
+        volumes:
+            - filewatcher_input:/app/input
+            - filewatcher_output:/app/output
+
     datadog:
         container_name: datadog-agent
         image: gcr.io/datadoghq/agent:7
@@ -132,3 +163,5 @@ volumes:
     rabbitmq_data:
     minio_data:
     processor_temp:
+    filewatcher_input:
+    filewatcher_output:
