@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/DataDog/datadog-go/v5/statsd"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	ddtracer "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 var (
@@ -37,11 +37,11 @@ func Init(serviceName, serviceVersion string) error {
 		ddEnv = "development"
 	}
 
-	tracer.Start(
-		tracer.WithService(serviceName),
-		tracer.WithServiceVersion(serviceVersion),
-		tracer.WithEnv(ddEnv),
-		tracer.WithAgentAddr(fmt.Sprintf("%s:8126", ddAgentHost)),
+	ddtracer.Start(
+		ddtracer.WithService(serviceName),
+		ddtracer.WithServiceVersion(serviceVersion),
+		ddtracer.WithEnv(ddEnv),
+		ddtracer.WithAgentAddr(fmt.Sprintf("%s:8126", ddAgentHost)),
 	)
 
 	// Initialize DogStatsD client
@@ -71,7 +71,7 @@ func Stop() {
 		return
 	}
 
-	tracer.Stop()
+	ddtracer.Stop()
 
 	if statsdClient != nil {
 		_ = statsdClient.Close()

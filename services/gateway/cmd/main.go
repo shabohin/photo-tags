@@ -23,9 +23,6 @@ import (
 	"github.com/shabohin/photo-tags/services/gateway/internal/telegram"
 )
 
-//go:embed ../../../pkg/database/migrations/001_initial_schema.sql
-var migrationSQL string
-
 func retry(attempts int, delay time.Duration, logger *logging.Logger, operationName string, fn func() error) error {
 	for i := 1; i <= attempts; i++ {
 		err := fn()
@@ -250,7 +247,7 @@ func initializeDependencies(
 	} else {
 		// Run migrations
 		logger.Info("Running database migrations", nil)
-		if err := dbClient.RunMigrations(ctx, migrationSQL); err != nil {
+		if err := dbClient.RunMigrations(ctx, database.InitialSchema); err != nil {
 			logger.Error("Failed to run migrations", err)
 			logger.Info("Continuing without database functionality", nil)
 			database.Close(dbClient)

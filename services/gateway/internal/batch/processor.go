@@ -1,13 +1,13 @@
 package batch
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -133,7 +133,7 @@ func (p *Processor) processImage(
 
 	// Upload to MinIO
 	objectPath := fmt.Sprintf("%s/%s", traceID, filename)
-	err = p.minioClient.UploadFile(ctx, storage.BucketOriginal, objectPath, imageData, int64(len(imageData)))
+	err = p.minioClient.UploadFile(ctx, storage.BucketOriginal, objectPath, bytes.NewReader(imageData), "application/octet-stream")
 	if err != nil {
 		p.handleImageError(jobID, traceID, fmt.Sprintf("Failed to upload to MinIO: %v", err))
 		return
@@ -162,7 +162,7 @@ func (p *Processor) processImage(
 		return
 	}
 
-	err = p.rabbitmqClient.Publish(messaging.QueueImageUpload, messageData)
+	err = p.rabbitmqClient.PublishMessage(messaging.QueueImageUpload, messageData)
 	if err != nil {
 		p.handleImageError(jobID, traceID, fmt.Sprintf("Failed to publish to queue: %v", err))
 		return
@@ -232,7 +232,7 @@ func (p *Processor) decodeBase64Image(base64Data string) ([]byte, error) {
 
 // handleImageError handles errors during image processing
 func (p *Processor) handleImageError(jobID string, traceID string, errorMsg string) {
-	p.logger.Error("Image processing error", fmt.Errorf(errorMsg))
+	p.logger.Error("Image processing error", fmt.Errorf("%s", errorMsg))
 	p.storage.UpdateImageStatus(jobID, traceID, "failed", "", errorMsg)
 
 	// Get updated job
@@ -281,32 +281,23 @@ func (p *Processor) sendProgressUpdate(jobID string, updateType string, image *m
 
 // StartProcessedImageConsumer starts consuming processed image messages
 func (p *Processor) StartProcessedImageConsumer(ctx context.Context) error {
-	consumer, err := p.rabbitmqClient.Consume(messaging.QueueImageProcessed)
-	if err != nil {
-		return fmt.Errorf("failed to start consumer: %w", err)
+	handler := func(msg []byte) error {
+		var processed models.ImageProcessed
+		if err := json.Unmarshal(msg, &processed); err != nil {
+			p.logger.Error("Failed to unmarshal processed message", err)
+			return err
+		}
+
+		// Check if this is a batch job (TelegramID == 0)
+		if processed.TelegramID == 0 {
+			p.handleProcessedImage(processed)
+		}
+		return nil
 	}
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case msg, ok := <-consumer:
-				if !ok {
-					return
-				}
-
-				var processed models.ImageProcessed
-				if err := json.Unmarshal(msg, &processed); err != nil {
-					p.logger.Error("Failed to unmarshal processed message", err)
-					continue
-				}
-
-				// Check if this is a batch job (TelegramID == 0)
-				if processed.TelegramID == 0 {
-					p.handleProcessedImage(processed)
-				}
-			}
+		if err := p.rabbitmqClient.ConsumeMessages(messaging.QueueImageProcessed, handler); err != nil {
+			p.logger.Error("Failed to consume messages", err)
 		}
 	}()
 
