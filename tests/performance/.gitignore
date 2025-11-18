@@ -1,0 +1,16 @@
+# Test reports - don't commit test results
+reports/
+
+# Go build artifacts
+benchmarks/*.test
+benchmarks/*.prof
+benchmarks/cpu.prof
+benchmarks/mem.prof
+
+# k6 temporary files
+*.json
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
