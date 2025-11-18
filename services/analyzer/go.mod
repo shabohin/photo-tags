@@ -4,9 +4,13 @@ go 1.24.0
 
 replace github.com/shabohin/photo-tags/pkg => ../../pkg
 
+replace gopkg.in/DataDog/dd-trace-go.v1 => github.com/DataDog/dd-trace-go v1.68.0
+
 require github.com/shabohin/photo-tags/pkg v0.0.0
 
 require (
+	github.com/DataDog/datadog-go/v5 v5.5.0
+	github.com/DataDog/dd-trace-go v1.68.0
 	github.com/eduardolat/openroutergo v0.1.0
 	github.com/minio/minio-go/v7 v7.0.87
 	github.com/rabbitmq/amqp091-go v1.9.0
@@ -36,3 +40,5 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace gopkg.in/DataDog/dd-trace-go.v1 => github.com/DataDog/dd-trace-go v1.68.0
