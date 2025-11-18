@@ -13,6 +13,7 @@ The project is built using a microservice architecture and includes the followin
 -   **Gateway Service** - receives images and sends results via Telegram API
 -   **Analyzer Service** - generates metadata using free vision models from OpenRouter with automatic model selection
 -   **Processor Service** - writes metadata to images
+-   **File Watcher Service** - monitors directories for batch image processing without Telegram
 -   **RabbitMQ** - message exchange between services
 -   **MinIO** - image storage
 
@@ -98,6 +99,32 @@ The service handles all technical complexities (model selection, rate limits, re
 -   **Title** - brief description of the image
 -   **Description** - more detailed description up to 200 characters
 -   **Keywords** - 49 keywords describing the image
+
+### File Watcher Service - Batch Processing
+
+In addition to the Telegram bot interface, you can process images in batch mode using the File Watcher Service:
+
+1. **Copy images to input directory**:
+```bash
+docker cp /path/to/images/* filewatcher:/app/input/
+```
+
+2. **Monitor processing**:
+```bash
+curl http://localhost:8081/stats
+```
+
+3. **Retrieve processed images**:
+```bash
+docker cp filewatcher:/app/output/. /path/to/output/
+```
+
+4. **Trigger manual scan**:
+```bash
+curl -X POST http://localhost:8081/scan
+```
+
+For more details, see [File Watcher Service README](services/filewatcher/README.md).
 
 ## Monitoring
 
