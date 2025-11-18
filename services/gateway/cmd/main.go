@@ -14,6 +14,7 @@ import (
 	"github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 	"github.com/shabohin/photo-tags/services/gateway/internal/handler"
+	"github.com/shabohin/photo-tags/services/gateway/internal/monitoring"
 	"github.com/shabohin/photo-tags/services/gateway/internal/telegram"
 )
 
@@ -54,6 +55,17 @@ func main() {
 	// Create logger
 	logger := logging.NewLogger("gateway")
 	logger.Info("Starting Gateway Service v1.0.0 at "+time.Now().Format(time.RFC3339), nil)
+
+	// Initialize Datadog monitoring
+	if err := monitoring.Init("gateway", "v1.0.0"); err != nil {
+		logger.Error("Failed to initialize Datadog monitoring", err)
+		// Continue anyway as monitoring is optional
+	} else if monitoring.IsEnabled() {
+		logger.Info("Datadog monitoring initialized successfully", nil)
+		defer monitoring.Stop()
+	} else {
+		logger.Info("Datadog monitoring disabled (DD_API_KEY not set)", nil)
+	}
 
 	// Initialize dependencies
 	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)
