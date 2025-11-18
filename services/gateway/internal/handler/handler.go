@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/shabohin/photo-tags/pkg/database"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
+	"github.com/shabohin/photo-tags/services/gateway/internal/stats"
 )
 
 // Handler handles HTTP requests
@@ -19,15 +21,22 @@ type Handler struct {
 	cfg          *config.Config
 	batchHandler *batch.Handler
 	adminHandler *AdminHandler
+	statsHandler *stats.Handler
 }
 
 // NewHandler creates a new Handler
-func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler, rabbitmqClient messaging.RabbitMQInterface) *Handler {
+func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler, rabbitmqClient messaging.RabbitMQInterface, repo database.RepositoryInterface) *Handler {
+	var statsHandler *stats.Handler
+	if repo != nil {
+		statsHandler = stats.NewHandler(logger, repo)
+	}
+
 	return &Handler{
 		logger:       logger,
 		cfg:          cfg,
 		batchHandler: batchHandler,
 		adminHandler: NewAdminHandler(logger, rabbitmqClient),
+		statsHandler: statsHandler,
 	}
 }
 
@@ -53,7 +62,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, _ *http.Request) {
 func (h *Handler) SetupRoutes() http.Handler {
 	mux := http.NewServeMux()
 
-	// Add routes
+	// Health check route
 	mux.HandleFunc("/health", h.HealthCheck)
 
 	// Add batch API routes if batch handler is configured
@@ -65,6 +74,16 @@ func (h *Handler) SetupRoutes() http.Handler {
 	mux.HandleFunc("/admin/failed-jobs", h.adminHandler.FailedJobsUI)
 	mux.HandleFunc("/admin/failed-jobs/api", h.adminHandler.GetFailedJobs)
 	mux.HandleFunc("/admin/failed-jobs/requeue", h.adminHandler.RequeueFailedJob)
+
+	// Statistics API routes
+	if h.statsHandler != nil {
+		mux.HandleFunc("/api/v1/stats/user/images", h.statsHandler.GetUserImages)
+		mux.HandleFunc("/api/v1/stats/user/summary", h.statsHandler.GetUserStats)
+		mux.HandleFunc("/api/v1/stats/daily", h.statsHandler.GetDailyStats)
+		mux.HandleFunc("/api/v1/stats/errors", h.statsHandler.GetRecentErrors)
+		mux.HandleFunc("/api/v1/stats/errors/summary", h.statsHandler.GetErrorStats)
+		mux.HandleFunc("/api/v1/images/trace", h.statsHandler.GetImageByTraceID)
+	}
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

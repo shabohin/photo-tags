@@ -19,6 +19,14 @@ type Config struct {
 	MinIOSecretKey string
 	MinIOUseSSL    bool
 
+	// PostgreSQL configuration
+	PostgresHost     string
+	PostgresPort     int
+	PostgresDB       string
+	PostgresUser     string
+	PostgresPassword string
+	PostgresSSLMode  string
+
 	// Server configuration
 	ServerPort int
 }
@@ -26,13 +34,19 @@ type Config struct {
 // LoadConfig loads configuration from environment variables
 func LoadConfig() *Config {
 	cfg := &Config{
-		TelegramToken:  getEnv("TELEGRAM_TOKEN", ""),
-		RabbitMQURL:    getEnv("RABBITMQ_URL", "amqp://user:password@localhost:5672/"),
-		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
-		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
-		MinIOUseSSL:    getEnvBool("MINIO_USE_SSL", false),
-		ServerPort:     getEnvInt("SERVER_PORT", 8080),
+		TelegramToken:    getEnv("TELEGRAM_TOKEN", ""),
+		RabbitMQURL:      getEnv("RABBITMQ_URL", "amqp://user:password@localhost:5672/"),
+		MinIOEndpoint:    getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinIOAccessKey:   getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinIOSecretKey:   getEnv("MINIO_SECRET_KEY", "minioadmin"),
+		MinIOUseSSL:      getEnvBool("MINIO_USE_SSL", false),
+		PostgresHost:     getEnv("POSTGRES_HOST", "localhost"),
+		PostgresPort:     getEnvInt("POSTGRES_PORT", 5432),
+		PostgresDB:       getEnv("POSTGRES_DB", "photo_tags"),
+		PostgresUser:     getEnv("POSTGRES_USER", "photo_tags_user"),
+		PostgresPassword: getEnv("POSTGRES_PASSWORD", "photo_tags_password"),
+		PostgresSSLMode:  getEnv("POSTGRES_SSL_MODE", "disable"),
+		ServerPort:       getEnvInt("SERVER_PORT", 8080),
 	}
 
 	return cfg

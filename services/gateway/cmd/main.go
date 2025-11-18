@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shabohin/photo-tags/pkg/database"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/storage"
@@ -18,6 +20,9 @@ import (
 	"github.com/shabohin/photo-tags/services/gateway/internal/monitoring"
 	"github.com/shabohin/photo-tags/services/gateway/internal/telegram"
 )
+
+//go:embed ../../../pkg/database/migrations/001_initial_schema.sql
+var migrationSQL string
 
 func retry(attempts int, delay time.Duration, logger *logging.Logger, operationName string, fn func() error) error {
 	for i := 1; i <= attempts; i++ {
@@ -69,12 +74,15 @@ func main() {
 	}
 
 	// Initialize dependencies
-	minioClient, rabbitmqClient, err := initializeDependencies(ctx, cfg, logger)
+	minioClient, rabbitmqClient, dbClient, repo, err := initializeDependencies(ctx, cfg, logger)
 	if err != nil {
 		logger.Error("Failed to initialize dependencies", err)
 		os.Exit(1)
 	}
 	defer rabbitmqClient.Close()
+	if dbClient != nil {
+		defer database.Close(dbClient)
+	}
 
 	// Initialize batch processing components
 	batchStorage := batch.NewStorage()
@@ -94,7 +102,7 @@ func main() {
 	logger.Info("Batch processing consumer started", nil)
 
 	// Create and start HTTP handler
-	httpHandler := handler.NewHandler(logger, cfg, batchHandler, rabbitmqClient)
+	httpHandler := handler.NewHandler(logger, cfg, batchHandler, rabbitmqClient, repo)
 	go func() {
 		if err := httpHandler.StartServer(ctx); err != nil {
 			logger.Error("HTTP server error", err)
@@ -104,7 +112,7 @@ func main() {
 
 	// Create and start Telegram bot if token is provided
 	if cfg.TelegramToken != "" {
-		bot, err := telegram.NewBot(cfg, logger, minioClient, rabbitmqClient)
+		bot, err := telegram.NewBot(cfg, logger, minioClient, rabbitmqClient, repo)
 		if err != nil {
 			logger.Error("Failed to create Telegram bot", err)
 			os.Exit(1)
@@ -139,21 +147,62 @@ func main() {
 	}
 }
 
-// initializeDependencies initializes MinIO and RabbitMQ clients
+// initializeDependencies initializes MinIO, RabbitMQ, and PostgreSQL clients
 func initializeDependencies(
 	ctx context.Context,
 	cfg *config.Config,
 	logger *logging.Logger,
-) (storage.MinIOInterface, messaging.RabbitMQInterface, error) {
+) (storage.MinIOInterface, messaging.RabbitMQInterface, *database.Client, database.RepositoryInterface, error) {
 	var minioClient storage.MinIOInterface
 	var rabbitmqClient messaging.RabbitMQInterface
+	var dbClient *database.Client
+	var repo database.RepositoryInterface
+
+	// Initialize PostgreSQL client
+	logger.Info("Initializing PostgreSQL client", map[string]interface{}{
+		"host": cfg.PostgresHost,
+		"port": cfg.PostgresPort,
+		"db":   cfg.PostgresDB,
+	})
+
+	err := retry(5, 2*time.Second, logger, "PostgreSQL client creation", func() error {
+		client, clientErr := database.NewClient(database.Config{
+			Host:     cfg.PostgresHost,
+			Port:     cfg.PostgresPort,
+			Database: cfg.PostgresDB,
+			User:     cfg.PostgresUser,
+			Password: cfg.PostgresPassword,
+			SSLMode:  cfg.PostgresSSLMode,
+		})
+		if clientErr != nil {
+			return clientErr
+		}
+		dbClient = client
+		return nil
+	})
+	if err != nil {
+		logger.Error("Failed to create PostgreSQL client", err)
+		logger.Info("Continuing without database functionality", nil)
+	} else {
+		// Run migrations
+		logger.Info("Running database migrations", nil)
+		if err := dbClient.RunMigrations(ctx, migrationSQL); err != nil {
+			logger.Error("Failed to run migrations", err)
+			logger.Info("Continuing without database functionality", nil)
+			database.Close(dbClient)
+			dbClient = nil
+		} else {
+			logger.Info("Database migrations completed successfully", nil)
+			repo = database.NewRepository(dbClient)
+		}
+	}
 
 	logger.Info("Initializing MinIO client", map[string]interface{}{
 		"endpoint": cfg.MinIOEndpoint,
 		"use_ssl":  cfg.MinIOUseSSL,
 	})
 
-	err := retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
+	err = retry(5, 2*time.Second, logger, "MinIO client creation", func() error {
 		client, clientErr := storage.NewMinIOClient(
 			cfg.MinIOEndpoint, cfg.MinIOAccessKey, cfg.MinIOSecretKey, cfg.MinIOUseSSL)
 		if clientErr != nil {
@@ -163,14 +212,14 @@ func initializeDependencies(
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create MinIO client after retries: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to create MinIO client after retries: %w", err)
 	}
 
 	err = retry(5, 2*time.Second, logger, "MinIO bucket check", func() error {
 		return minioClient.EnsureBucketExists(ctx, storage.BucketOriginal)
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to check MinIO connection after retries: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to check MinIO connection after retries: %w", err)
 	}
 
 	logger.Info("Initializing RabbitMQ client", map[string]interface{}{
@@ -186,7 +235,7 @@ func initializeDependencies(
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create RabbitMQ client after retries: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to create RabbitMQ client after retries: %w", err)
 	}
 
 	logger.Info("Declaring RabbitMQ queues", nil)
@@ -197,13 +246,13 @@ func initializeDependencies(
 	}
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageUpload); err != nil {
-		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageUpload, err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageUpload, err)
 	}
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageProcessed); err != nil {
-		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageProcessed, err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueProcessed, err)
 	}
 
 	logger.Info("Dependencies initialized successfully", nil)
-	return minioClient, rabbitmqClient, nil
+	return minioClient, rabbitmqClient, dbClient, repo, nil
 }

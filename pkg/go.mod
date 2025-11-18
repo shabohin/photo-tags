@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/disintegration/imaging v1.6.2
+	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.87
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0

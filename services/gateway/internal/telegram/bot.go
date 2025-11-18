@@ -14,6 +14,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 
+	"github.com/shabohin/photo-tags/pkg/database"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/models"
@@ -28,6 +29,7 @@ type Bot struct {
 	logger   *logging.Logger
 	minio    storage.MinIOInterface
 	rabbitmq messaging.RabbitMQInterface
+	repo     database.RepositoryInterface
 	cfg      *config.Config
 	metrics  *monitoring.Metrics
 }
@@ -57,6 +59,7 @@ func NewBot(
 	logger *logging.Logger,
 	minio storage.MinIOInterface,
 	rabbitmq messaging.RabbitMQInterface,
+	repo database.RepositoryInterface,
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
@@ -68,6 +71,7 @@ func NewBot(
 		logger:   logger,
 		minio:    minio,
 		rabbitmq: rabbitmq,
+		repo:     repo,
 		cfg:      cfg,
 		metrics:  monitoring.NewMetrics(),
 	}, nil
@@ -286,6 +290,25 @@ func (b *Bot) processMedia(
 
 	b.metrics.Incr("rabbitmq.messages.published", []string{"queue:image_upload"})
 
+	// Log image to database if repository is available
+	if b.repo != nil {
+		username := message.From.UserName
+		originalPath := minioObjectPath
+		img := &database.Image{
+			TraceID:          traceID,
+			TelegramID:       message.From.ID,
+			TelegramUsername: &username,
+			Filename:         fileName,
+			OriginalPath:     &originalPath,
+			Status:           database.StatusPending,
+		}
+
+		if err := b.repo.CreateImage(ctx, img); err != nil {
+			log.Error("Failed to log image to database", err)
+			// Don't fail the upload if database logging fails
+		}
+	}
+
 	log.Info("Image uploaded and message published", uploadMessage)
 
 	return nil
@@ -304,14 +327,37 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 	botLog := NewBotLogger(b.logger.WithTraceID(message.TraceID).WithGroupID(message.GroupID), message.GroupID)
 	botLog.Info("Received processed image", message)
 
+	ctx := context.Background()
+
 	// Check if processing failed
 	if message.Status == "failed" {
 		b.sendErrorMessage(message.TelegramID, "Failed to process image: "+message.Error)
+
+		// Update database status if repository is available
+		if b.repo != nil {
+			errorMsg := message.Error
+			if err := b.repo.UpdateImageStatus(ctx, message.TraceID, database.StatusFailed, &errorMsg); err != nil {
+				botLog.Error("Failed to update image status in database", err)
+			}
+
+			// Log error to errors table
+			errRecord := &database.Error{
+				TraceID:      &message.TraceID,
+				Service:      "processor",
+				ErrorType:    "processing_error",
+				ErrorMessage: message.Error,
+				TelegramID:   &message.TelegramID,
+				Filename:     &message.OriginalFilename,
+			}
+			if logErr := b.repo.LogError(ctx, errRecord); logErr != nil {
+				botLog.Error("Failed to log error to database", logErr)
+			}
+		}
+
 		return nil
 	}
 
 	// Download file from MinIO
-	ctx := context.Background()
 	obj, err := b.minio.DownloadFile(ctx, storage.BucketProcessed, message.ProcessedPath)
 	if err != nil {
 		botLog.Error("Failed to download file from MinIO", err)
@@ -344,6 +390,23 @@ func (b *Bot) handleProcessedImage(data []byte) error {
 		botLog.Error("Failed to send image", err)
 		b.sendErrorMessage(message.TelegramID, "Failed to send processed image")
 		return err
+	}
+
+	// Update database status if repository is available
+	if b.repo != nil {
+		// Convert metadata from message to database format
+		var metadata *database.ImageMetadata
+		if message.OriginalFilename != "" {
+			// Note: We don't have the metadata in ImageProcessed message
+			// This could be enhanced in the future
+			metadata = nil
+		}
+
+		processedPath := message.ProcessedPath
+		if err := b.repo.UpdateImageProcessed(ctx, message.TraceID, processedPath, metadata, database.StatusSuccess); err != nil {
+			botLog.Error("Failed to update processed image in database", err)
+			// Don't fail if database update fails
+		}
 	}
 
 	botLog.Info("Processed image sent", nil)
