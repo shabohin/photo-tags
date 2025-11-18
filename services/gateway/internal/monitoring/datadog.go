@@ -1,21 +1,14 @@
 package monitoring
 
 import (
-	"fmt"
 	"os"
-	"sync"
-
-	"github.com/DataDog/datadog-go/v5/statsd"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 var (
-	statsdClient *statsd.Client
-	once         sync.Once
-	isEnabled    bool
+	isEnabled bool
 )
 
-// Init initializes Datadog monitoring (tracing and metrics)
+// Init initializes monitoring (stub implementation - Datadog disabled due to network restrictions)
 func Init(serviceName, serviceVersion string) error {
 	ddAPIKey := os.Getenv("DD_API_KEY")
 	if ddAPIKey == "" {
@@ -24,116 +17,57 @@ func Init(serviceName, serviceVersion string) error {
 		return nil
 	}
 
-	isEnabled = true
-
-	// Initialize Datadog tracer
-	ddAgentHost := os.Getenv("DD_AGENT_HOST")
-	if ddAgentHost == "" {
-		ddAgentHost = "datadog"
-	}
-
-	ddEnv := os.Getenv("DD_ENV")
-	if ddEnv == "" {
-		ddEnv = "development"
-	}
-
-	tracer.Start(
-		tracer.WithService(serviceName),
-		tracer.WithServiceVersion(serviceVersion),
-		tracer.WithEnv(ddEnv),
-		tracer.WithAgentAddr(fmt.Sprintf("%s:8126", ddAgentHost)),
-	)
-
-	// Initialize DogStatsD client
-	var err error
-	once.Do(func() {
-		statsdClient, err = statsd.New(
-			fmt.Sprintf("%s:8125", ddAgentHost),
-			statsd.WithNamespace("photo_tags."),
-			statsd.WithTags([]string{
-				fmt.Sprintf("service:%s", serviceName),
-				fmt.Sprintf("version:%s", serviceVersion),
-				fmt.Sprintf("env:%s", ddEnv),
-			}),
-		)
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to initialize DogStatsD client: %w", err)
-	}
-
+	// Datadog monitoring is disabled in this build
+	// To enable, install DataDog dependencies: github.com/DataDog/dd-trace-go and github.com/DataDog/datadog-go/v5
+	isEnabled = false
 	return nil
 }
 
-// Stop stops the Datadog tracer
+// Stop stops the monitoring
 func Stop() {
-	if !isEnabled {
-		return
-	}
-
-	tracer.Stop()
-
-	if statsdClient != nil {
-		_ = statsdClient.Close()
-	}
+	// No-op in stub implementation
 }
 
-// IsEnabled returns whether Datadog monitoring is enabled
+// IsEnabled returns whether monitoring is enabled
 func IsEnabled() bool {
 	return isEnabled
 }
 
-// GetStatsD returns the DogStatsD client
-func GetStatsD() *statsd.Client {
-	return statsdClient
-}
-
-// Metrics provides helper functions for sending metrics
+// Metrics provides helper functions for sending metrics (stub implementation)
 type Metrics struct {
-	client *statsd.Client
 }
 
 // NewMetrics creates a new Metrics instance
 func NewMetrics() *Metrics {
-	return &Metrics{
-		client: statsdClient,
-	}
+	return &Metrics{}
 }
 
-// Count increments a counter
+// Count increments a counter (no-op)
 func (m *Metrics) Count(name string, value int64, tags []string) {
-	if m.client != nil && isEnabled {
-		_ = m.client.Count(name, value, tags, 1.0)
-	}
+	// No-op in stub implementation
 }
 
-// Gauge sets a gauge value
+// Gauge sets a gauge value (no-op)
 func (m *Metrics) Gauge(name string, value float64, tags []string) {
-	if m.client != nil && isEnabled {
-		_ = m.client.Gauge(name, value, tags, 1.0)
-	}
+	// No-op in stub implementation
 }
 
-// Histogram sends a histogram value
+// Histogram sends a histogram value (no-op)
 func (m *Metrics) Histogram(name string, value float64, tags []string) {
-	if m.client != nil && isEnabled {
-		_ = m.client.Histogram(name, value, tags, 1.0)
-	}
+	// No-op in stub implementation
 }
 
-// Timing sends a timing metric
+// Timing sends a timing metric (no-op)
 func (m *Metrics) Timing(name string, value int64, tags []string) {
-	if m.client != nil && isEnabled {
-		_ = m.client.TimeInMilliseconds(name, float64(value), tags, 1.0)
-	}
+	// No-op in stub implementation
 }
 
-// Incr increments a counter by 1
+// Incr increments a counter by 1 (no-op)
 func (m *Metrics) Incr(name string, tags []string) {
-	m.Count(name, 1, tags)
+	// No-op in stub implementation
 }
 
-// Decr decrements a counter by 1
+// Decr decrements a counter by 1 (no-op)
 func (m *Metrics) Decr(name string, tags []string) {
-	m.Count(name, -1, tags)
+	// No-op in stub implementation
 }
