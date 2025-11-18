@@ -76,7 +76,7 @@ func main() {
 	defer rabbitmqClient.Close()
 
 	// Create and start HTTP handler
-	httpHandler := handler.NewHandler(logger, cfg)
+	httpHandler := handler.NewHandler(logger, cfg, rabbitmqClient)
 	go func() {
 		if err := httpHandler.StartServer(ctx); err != nil {
 			logger.Error("HTTP server error", err)
@@ -172,6 +172,11 @@ func initializeDependencies(
 	}
 
 	logger.Info("Declaring RabbitMQ queues", nil)
+
+	// Declare dead letter queue
+	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueDeadLetter); err != nil {
+		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueDeadLetter, err)
+	}
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageUpload); err != nil {
 		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageUpload, err)

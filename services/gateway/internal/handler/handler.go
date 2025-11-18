@@ -8,20 +8,23 @@ import (
 	"time"
 
 	"github.com/shabohin/photo-tags/pkg/logging"
+	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 )
 
 // Handler handles HTTP requests
 type Handler struct {
-	logger *logging.Logger
-	cfg    *config.Config
+	logger       *logging.Logger
+	cfg          *config.Config
+	adminHandler *AdminHandler
 }
 
 // NewHandler creates a new Handler
-func NewHandler(logger *logging.Logger, cfg *config.Config) *Handler {
+func NewHandler(logger *logging.Logger, cfg *config.Config, rabbitmqClient messaging.RabbitMQInterface) *Handler {
 	return &Handler{
-		logger: logger,
-		cfg:    cfg,
+		logger:       logger,
+		cfg:          cfg,
+		adminHandler: NewAdminHandler(logger, rabbitmqClient),
 	}
 }
 
@@ -49,6 +52,11 @@ func (h *Handler) SetupRoutes() http.Handler {
 
 	// Add routes
 	mux.HandleFunc("/health", h.HealthCheck)
+
+	// Admin routes
+	mux.HandleFunc("/admin/failed-jobs", h.adminHandler.FailedJobsUI)
+	mux.HandleFunc("/admin/failed-jobs/api", h.adminHandler.GetFailedJobs)
+	mux.HandleFunc("/admin/failed-jobs/requeue", h.adminHandler.RequeueFailedJob)
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -120,6 +120,7 @@ After startup, you can access the following interfaces:
 -   **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
 -   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
+-   **Dead Letter Queue Admin**: [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs) (monitor and retry failed jobs)
 -   **Datadog Dashboard**: [app.datadoghq.com](https://app.datadoghq.com/) (if configured)
 
 ## Service Logs
@@ -187,6 +188,18 @@ Robust error handling includes:
 - **Model Failover**: Attempts multiple models when primary is unavailable
 - **Queue Persistence**: No requests lost during service interruptions
 - **User Communication**: Clear status updates without technical jargon
+
+### Dead Letter Queue
+
+The service implements a Dead Letter Queue (DLQ) for managing failed messages:
+- **Automatic Failure Tracking**: Failed jobs are automatically sent to DLQ instead of being lost
+- **Error Visibility**: View all failed jobs with error reasons and retry counts
+- **Manual Retry**: Web UI for reviewing and requeuing failed jobs
+- **Full Metadata**: Each failed job includes original queue, message body, and failure details
+
+Access the DLQ admin interface at [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs)
+
+For detailed documentation, see [Dead Letter Queue Guide](docs/dead-letter-queue.md).
 
 
 ## Development

@@ -55,3 +55,14 @@ type Metadata struct {
 	Description string   `json:"description"`
 	Keywords    []string `json:"keywords"`
 }
+
+// FailedJob represents a failed message in the dead letter queue
+type FailedJob struct {
+	ID            string    `json:"id"`
+	OriginalQueue string    `json:"original_queue"`
+	MessageBody   string    `json:"message_body"`
+	ErrorReason   string    `json:"error_reason"`
+	FailedAt      time.Time `json:"failed_at"`
+	RetryCount    int       `json:"retry_count"`
+	LastRetryAt   time.Time `json:"last_retry_at,omitempty"`
+}
