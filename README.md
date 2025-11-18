@@ -101,11 +101,26 @@ The service handles all technical complexities (model selection, rate limits, re
 
 ## Monitoring
 
+The service includes comprehensive monitoring with Datadog for APM, metrics, and logs. See the [Monitoring Guide](docs/monitoring.md) for detailed setup instructions.
+
+### Quick Start with Datadog
+
+1. Get a free API key from [datadoghq.com](https://www.datadoghq.com/)
+2. Add to `docker/.env`:
+   ```bash
+   DD_API_KEY=your_api_key_here
+   DD_ENV=development
+   ```
+3. Restart services: `./scripts/start.sh`
+
+### Available Interfaces
+
 After startup, you can access the following interfaces:
 
 -   **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
 -   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
+-   **Datadog Dashboard**: [app.datadoghq.com](https://app.datadoghq.com/) (if configured)
 
 ## Service Logs
 

@@ -13,6 +13,8 @@ import (
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/handler"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/monitoring"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/selector"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
@@ -25,15 +27,27 @@ type App struct {
 	minioClient   *minio.Client
 	processor     *service.MessageProcessorService
 	modelSelector *selector.ModelSelector
+	httpHandler   *handler.Handler
 	logger        *logrus.Logger
 	shutdownWg    sync.WaitGroup
 	workerCount   int
+	cfg           *config.Config
 }
 
 func New(cfg *config.Config) (*App, error) {
 	logger := config.ConfigureLogger(cfg)
 
 	logger.Info("Initializing Analyzer Service")
+
+	// Initialize Datadog monitoring
+	if err := monitoring.Init("analyzer", "v1.0.0"); err != nil {
+		logger.WithError(err).Error("Failed to initialize Datadog monitoring")
+		// Continue anyway as monitoring is optional
+	} else if monitoring.IsEnabled() {
+		logger.Info("Datadog monitoring initialized successfully")
+	} else {
+		logger.Info("Datadog monitoring disabled (DD_API_KEY not set)")
+	}
 
 	// Initialize MinIO client
 	minioClient, err := minio.NewClient(
@@ -121,15 +135,27 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	// Initialize HTTP handler for health checks
+	httpHandler := handler.NewHandler(
+		logger,
+		cfg,
+		consumer,
+		publisher,
+		minioClient,
+		cfg.Worker.Concurrency,
+	)
+
 	return &App{
 		consumer:      consumer,
 		publisher:     publisher,
 		minioClient:   minioClient,
 		processor:     processor,
 		modelSelector: modelSelector,
+		httpHandler:   httpHandler,
 		logger:        logger,
 		workerCount:   cfg.Worker.Concurrency,
 		shutdown:      make(chan struct{}),
+		cfg:           cfg,
 	}, nil
 }
 
@@ -140,6 +166,13 @@ func (a *App) Start() error {
 
 	// Start Model Selector
 	a.modelSelector.Start(ctx)
+
+	// Start HTTP server for health checks
+	go func() {
+		if err := a.httpHandler.StartServer(ctx); err != nil {
+			a.logger.WithError(err).Error("HTTP server error")
+		}
+	}()
 
 	// Start signal handler
 	go func() {
@@ -155,8 +188,14 @@ func (a *App) Start() error {
 	for i := 0; i < a.workerCount; i++ {
 		workerID := i
 		a.shutdownWg.Add(1)
+		a.httpHandler.SetActiveWorkers(i + 1)
 		go func() {
 			defer a.shutdownWg.Done()
+			defer func() {
+				// Decrement active workers on exit
+				activeWorkers := a.httpHandler.GetActiveWorkers()
+				a.httpHandler.SetActiveWorkers(activeWorkers - 1)
+			}()
 			a.startWorker(ctx, workerID)
 		}()
 	}
@@ -223,6 +262,9 @@ func (a *App) Shutdown() {
 	if err := a.publisher.Close(); err != nil {
 		a.logger.WithError(err).Error("Error closing publisher")
 	}
+
+	// Stop Datadog monitoring
+	monitoring.Stop()
 
 	a.logger.Info("Application shutdown complete")
 }

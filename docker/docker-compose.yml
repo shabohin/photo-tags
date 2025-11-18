@@ -125,6 +125,29 @@ services:
             - RABBITMQ_MGMT_URL=http://localhost:15672
         restart: unless-stopped
 
+    datadog:
+        container_name: datadog-agent
+        image: gcr.io/datadoghq/agent:7
+        pid: host
+        ports:
+            - '8126:8126' # APM traces
+            - '8125:8125/udp' # DogStatsD metrics
+        environment:
+            - DD_API_KEY=${DD_API_KEY}
+            - DD_SITE=${DD_SITE:-datadoghq.com}
+            - DD_LOGS_ENABLED=true
+            - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+            - DD_APM_ENABLED=true
+            - DD_APM_NON_LOCAL_TRAFFIC=true
+            - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+            - DD_DOCKER_LABELS_AS_TAGS='{"*":"true"}'
+            - DD_TAGS=env:${DD_ENV:-development} service:photo-tags
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - /proc/:/host/proc/:ro
+            - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+            - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
 volumes:
     rabbitmq_data:
     minio_data:
