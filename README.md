@@ -171,6 +171,43 @@ The service includes comprehensive monitoring with Datadog for APM, metrics, and
    ```
 3. Restart services: `./scripts/start.sh`
 
+## Backup and Disaster Recovery
+
+The service includes automated backup and restore functionality for all critical data. See the [Backup and Recovery Guide](docs/backup-and-recovery.md) for complete documentation.
+
+### Quick Start with Backups
+
+**Create Manual Backup**:
+```bash
+./scripts/backup.sh
+```
+
+**Setup Automated Daily Backups**:
+```bash
+./scripts/setup-backup-cron.sh
+```
+
+**Restore from Backup**:
+```bash
+./scripts/restore.sh
+```
+
+### What Gets Backed Up
+
+- **MinIO Buckets**: All original and processed images
+- **RabbitMQ**: Queue definitions, exchanges, and configurations
+- **Retention**: Last 7 days of backups (configurable)
+
+### Backup Features
+
+- Automated daily backups via cron
+- Compressed tar.gz archives with timestamps
+- Automatic cleanup of old backups
+- Interactive restore with backup selection
+- Verification and validation of backup integrity
+
+For detailed instructions, configuration options, and troubleshooting, see the [Backup and Recovery Guide](docs/backup-and-recovery.md).
+
 ### Available Interfaces
 
 After startup, you can access the following interfaces:
