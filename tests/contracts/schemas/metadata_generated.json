@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/shabohin/photo-tags/schemas/metadata_generated.json",
+  "title": "MetadataGenerated",
+  "description": "Message schema for metadata_generated queue",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "trace_id",
+    "group_id",
+    "original_filename",
+    "original_path",
+    "metadata",
+    "telegram_id"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Message timestamp in RFC3339 format"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Unique trace ID for tracking the message across services",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Telegram group ID",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "original_filename": {
+      "type": "string",
+      "description": "Original filename of the uploaded image",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "original_path": {
+      "type": "string",
+      "description": "Storage path of the original image",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Generated image metadata",
+      "required": ["title", "description", "keywords"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Image title",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "description": {
+          "type": "string",
+          "description": "Image description",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "keywords": {
+          "type": "array",
+          "description": "List of image keywords",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "minItems": 0,
+          "maxItems": 50
+        }
+      },
+      "additionalProperties": false
+    },
+    "telegram_id": {
+      "type": "integer",
+      "description": "Telegram user ID",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

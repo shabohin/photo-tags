@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/shabohin/photo-tags/schemas/image_upload.json",
+  "title": "ImageUpload",
+  "description": "Message schema for image_upload queue",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "trace_id",
+    "group_id",
+    "telegram_username",
+    "original_filename",
+    "original_path",
+    "telegram_id"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Message timestamp in RFC3339 format"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Unique trace ID for tracking the message across services",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Telegram group ID",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "telegram_username": {
+      "type": "string",
+      "description": "Telegram username",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "original_filename": {
+      "type": "string",
+      "description": "Original filename of the uploaded image",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "original_path": {
+      "type": "string",
+      "description": "Storage path of the original image",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "telegram_id": {
+      "type": "integer",
+      "description": "Telegram user ID",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

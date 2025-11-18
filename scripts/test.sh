@@ -36,6 +36,13 @@ go test -race -v ./...
 PKG_RESULT=$?
 cd ..
 
+# Test contract tests
+echo -e "\n${YELLOW}Testing RabbitMQ Contract tests...${NC}"
+cd tests/contracts
+go test -race -v ./...
+CONTRACTS_RESULT=$?
+cd ../..
+
 # Check test results
 echo ""
 if [ $GATEWAY_RESULT -eq 0 ]; then
@@ -62,8 +69,14 @@ else
     echo -e "${RED}✗ Shared packages tests failed${NC}"
 fi
 
+if [ $CONTRACTS_RESULT -eq 0 ]; then
+    echo -e "${GREEN}✓ Contract tests passed${NC}"
+else
+    echo -e "${RED}✗ Contract tests failed${NC}"
+fi
+
 # Return overall result
-if [ $GATEWAY_RESULT -eq 0 ] && [ $ANALYZER_RESULT -eq 0 ] && [ $PROCESSOR_RESULT -eq 0 ] && [ $PKG_RESULT -eq 0 ]; then
+if [ $GATEWAY_RESULT -eq 0 ] && [ $ANALYZER_RESULT -eq 0 ] && [ $PROCESSOR_RESULT -eq 0 ] && [ $PKG_RESULT -eq 0 ] && [ $CONTRACTS_RESULT -eq 0 ]; then
     echo -e "\n${GREEN}All tests passed successfully!${NC}"
     exit 0
 else
