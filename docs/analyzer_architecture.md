@@ -20,14 +20,20 @@ services/analyzer/
 │   └── main.go                    # Application entry point
 ├── internal/
 │   ├── config/                    # Service configuration
-│   │   └── config.go              # Configuration structures and loading
+│   │   ├── config.go              # Configuration structures and loading
+│   │   └── config_test.go         # Configuration tests
 │   ├── domain/                    # Domain models and business logic
 │   │   ├── model/                 # Data models
 │   │   │   ├── message.go         # Message structures
 │   │   │   └── metadata.go        # Metadata model
 │   │   └── service/               # Service layers
 │   │       ├── analyzer.go        # Image analysis service
-│   │       └── processor.go       # Message processor
+│   │       ├── analyzer_test.go   # Analyzer tests
+│   │       ├── processor.go       # Message processor
+│   │       └── interfaces.go      # Service interfaces
+│   ├── selector/                  # Model selection service (NEW) 🆕
+│   │   ├── selector.go            # Automatic model selection
+│   │   └── selector_test.go       # Selector tests
 │   ├── transport/                 # Transport layer
 │   │   └── rabbitmq/              # RabbitMQ client
 │   │       ├── consumer.go        # Message consumer
@@ -37,11 +43,24 @@ services/analyzer/
 │   │       └── client.go          # Storage operations
 │   ├── api/                       # External API interactions
 │   │   └── openrouter/            # OpenRouter API client
-│   │       └── client.go          # GPT-4o interface
+│   │       ├── client.go          # Vision models interface
+│   │       ├── client_test.go     # Client tests
+│   │       └── openroutergo_adapter.go  # Adapter for library
 │   └── app/                       # Application initialization
 │       └── app.go                 # Application assembly and startup
 └── go.mod                         # Application module
 ```
+
+**🆕 New Package: `selector/`**
+
+The Model Selector service automatically discovers and selects the best free vision models from OpenRouter:
+
+-   Fetches available models from OpenRouter API
+-   Filters for free models with vision/multimodal capabilities
+-   Selects model with highest context length
+-   Caches selected model in memory (thread-safe)
+-   Periodically updates every 24h (configurable)
+-   Provides fallback to configured model
 
 ## Component Diagram
 
@@ -55,7 +74,9 @@ graph TD
     B --> G[api.OpenRouterClient]
     B --> H[service.AnalyzerService]
     B --> I[service.MessageProcessor]
+    B --> J[selector.ModelSelector]
 
+    J --> G
     D --> I
     I --> H
     H --> F
@@ -65,6 +86,7 @@ graph TD
     subgraph Domain
         H
         I
+        J
     end
 
     subgraph Infrastructure
@@ -77,6 +99,8 @@ graph TD
     subgraph Configuration
         C
     end
+
+    style J fill:#90EE90
 ```
 
 ## Processing Sequence Diagram
@@ -279,9 +303,74 @@ The service implements a robust error handling strategy:
 
 ## OpenRouter API Integration
 
-The service communicates with the OpenRouter API to analyze images using GPT-4o:
+The service communicates with the OpenRouter API to analyze images using vision models:
 
+-   **Automatic Model Selection**: Best free vision models discovered automatically
 -   Base64 encoding of image data
 -   Construction of appropriate prompts
 -   Processing of API responses to extract structured metadata
 -   Fallback strategies for format variations in responses
+-   **Rate Limit Handling**: Automatic retry with exponential backoff
+-   **Error Recovery**: Retry logic for 5xx and network errors
+
+### New: Model Selector Service
+
+The Model Selector service (`selector/`) provides intelligent, automatic model selection:
+
+#### Responsibilities
+
+1. **Model Discovery**: Fetches all available models from OpenRouter `/api/v1/models` endpoint
+2. **Filtering**: Selects only free models with vision/multimodal capabilities
+3. **Ranking**: Sorts models by context length (higher is better)
+4. **Caching**: Thread-safe in-memory cache of selected model
+5. **Periodic Updates**: Automatic updates every 24h (configurable via `OPENROUTER_MODEL_CHECK_INTERVAL`)
+6. **Graceful Degradation**: Falls back to `OPENROUTER_MODEL` if no free models available
+
+#### Selection Algorithm
+
+```go
+// Pseudo-code for model selection
+func SelectBestFreeVisionModel(models []Model) (*Model, error) {
+    freeVisionModels := []Model{}
+
+    // Filter for free vision models
+    for model in models {
+        if model.Pricing.Prompt == "0" {
+            if model.Architecture.Modality contains "multimodal" or "image" {
+                freeVisionModels.append(model)
+            }
+        }
+    }
+
+    // Sort by context length (descending)
+    sort(freeVisionModels, by: ContextLength, descending)
+
+    // Return best model
+    return freeVisionModels[0]
+}
+```
+
+#### Thread Safety
+
+-   Uses `sync.RWMutex` for concurrent-safe access
+-   Multiple goroutines can read selected model simultaneously
+-   Periodic updates safely modify cached value
+
+#### Lifecycle
+
+1. **Startup**: Initial model selection on service start
+2. **Runtime**: Periodic updates every 24h (default)
+3. **Shutdown**: Graceful stop via context cancellation
+
+#### Example Log Output
+
+```
+INFO  Starting Model Selector              check_interval=24h0m0s
+INFO  Updating available models
+INFO  Successfully fetched models          models_count=127
+INFO  Selected best free vision model
+      model_id="google/gemini-2.0-flash-exp:free"
+      model_name="Gemini 2.0 Flash (free)"
+      context_len=32768
+      modality="multimodal"
+```
