@@ -13,6 +13,7 @@ import (
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/config"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/service"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/monitoring"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/selector"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/storage/minio"
 	"github.com/shabohin/photo-tags/services/analyzer/internal/transport/rabbitmq"
@@ -34,6 +35,16 @@ func New(cfg *config.Config) (*App, error) {
 	logger := config.ConfigureLogger(cfg)
 
 	logger.Info("Initializing Analyzer Service")
+
+	// Initialize Datadog monitoring
+	if err := monitoring.Init("analyzer", "v1.0.0"); err != nil {
+		logger.WithError(err).Error("Failed to initialize Datadog monitoring")
+		// Continue anyway as monitoring is optional
+	} else if monitoring.IsEnabled() {
+		logger.Info("Datadog monitoring initialized successfully")
+	} else {
+		logger.Info("Datadog monitoring disabled (DD_API_KEY not set)")
+	}
 
 	// Initialize MinIO client
 	minioClient, err := minio.NewClient(
@@ -223,6 +234,9 @@ func (a *App) Shutdown() {
 	if err := a.publisher.Close(); err != nil {
 		a.logger.WithError(err).Error("Error closing publisher")
 	}
+
+	// Stop Datadog monitoring
+	monitoring.Stop()
 
 	a.logger.Info("Application shutdown complete")
 }

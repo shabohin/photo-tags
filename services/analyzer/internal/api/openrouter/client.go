@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/shabohin/photo-tags/services/analyzer/internal/domain/model"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/monitoring"
 )
 
 type OpenRouterClient interface {
@@ -41,6 +42,7 @@ type Client struct {
 	prompt      string
 	temperature float64
 	maxTokens   int
+	metrics     *monitoring.Metrics
 }
 
 type OpenRouterRequest struct {
@@ -152,11 +154,15 @@ func NewClient(
 		httpClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
-		logger: logger,
+		logger:  logger,
+		metrics: monitoring.NewMetrics(),
 	}
 }
 
 func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID string) (model.Metadata, error) {
+	startTime := time.Now()
+	c.metrics.Incr("openrouter.analyze_image.requests", []string{})
+
 	imageBase64 := base64.StdEncoding.EncodeToString(imageBytes)
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", imageBase64)
 
@@ -234,6 +240,7 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 
 		resp, err = c.httpClient.Do(req)
 		if err != nil {
+			c.metrics.Incr("openrouter.analyze_image.errors", []string{"error:network"})
 			lastErr = err
 			c.logger.WithFields(logrus.Fields{
 				"trace_id": traceID,
@@ -245,6 +252,8 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 
 		// Check for rate limiting
 		if resp.StatusCode == http.StatusTooManyRequests {
+			c.metrics.Incr("openrouter.analyze_image.errors", []string{"error:rate_limit"})
+
 			resetTime := c.parseRateLimitReset(resp.Header)
 			_ = resp.Body.Close()
 
@@ -269,6 +278,8 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 
 		// Check for server errors (5xx) - retry these
 		if resp.StatusCode >= 500 {
+			c.metrics.Incr("openrouter.analyze_image.errors", []string{"error:server_error"})
+
 			body, _ := io.ReadAll(resp.Body)
 			_ = resp.Body.Close()
 
@@ -305,6 +316,8 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		c.metrics.Incr("openrouter.analyze_image.errors", []string{"error:client_error"})
+
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			c.logger.WithFields(logrus.Fields{
@@ -354,6 +367,12 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 		return model.Metadata{}, fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
+	// Record successful analysis
+	duration := time.Since(startTime).Milliseconds()
+	c.metrics.Timing("openrouter.analyze_image.duration", duration, []string{"status:success"})
+	c.metrics.Incr("openrouter.analyze_image.success", []string{})
+	c.metrics.Histogram("openrouter.metadata.keywords_count", float64(len(metadataResp.Keywords)), []string{})
+
 	return model.Metadata{
 		Title:       metadataResp.Title,
 		Description: metadataResp.Description,
@@ -363,6 +382,8 @@ func (c *Client) AnalyzeImage(ctx context.Context, imageBytes []byte, traceID st
 
 // GetAvailableModels fetches the list of available models from OpenRouter
 func (c *Client) GetAvailableModels(ctx context.Context) ([]Model, error) {
+	c.metrics.Incr("openrouter.get_models.requests", []string{})
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, modelsURL, http.NoBody)
 	if err != nil {
 		c.logger.WithError(err).Error("Failed to create models request")
@@ -395,6 +416,7 @@ func (c *Client) GetAvailableModels(ctx context.Context) ([]Model, error) {
 
 		resp, err = c.httpClient.Do(req)
 		if err != nil {
+			c.metrics.Incr("openrouter.get_models.errors", []string{"error:network"})
 			lastErr = err
 			c.logger.WithFields(logrus.Fields{
 				"attempt": attempt,
@@ -405,6 +427,8 @@ func (c *Client) GetAvailableModels(ctx context.Context) ([]Model, error) {
 
 		// Check for rate limiting
 		if resp.StatusCode == http.StatusTooManyRequests {
+			c.metrics.Incr("openrouter.get_models.errors", []string{"error:rate_limit"})
+
 			resetTime := c.parseRateLimitReset(resp.Header)
 			_ = resp.Body.Close()
 
@@ -456,6 +480,8 @@ func (c *Client) GetAvailableModels(ctx context.Context) ([]Model, error) {
 	}
 
 	c.logger.WithField("models_count", len(modelsResp.Data)).Info("Successfully fetched models")
+	c.metrics.Incr("openrouter.get_models.success", []string{})
+	c.metrics.Gauge("openrouter.models_count", float64(len(modelsResp.Data)), []string{})
 	return modelsResp.Data, nil
 }
 

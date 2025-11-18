@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/shabohin/photo-tags/services/analyzer/internal/api/openrouter"
+	"github.com/shabohin/photo-tags/services/analyzer/internal/monitoring"
 )
 
 // ModelSelector manages automatic selection and caching of the best free vision model
@@ -21,6 +22,7 @@ type ModelSelector struct {
 	fallbackModel  string
 	stopChan       chan struct{}
 	stoppedChan    chan struct{}
+	metrics        *monitoring.Metrics
 }
 
 // NewModelSelector creates a new ModelSelector instance
@@ -37,6 +39,7 @@ func NewModelSelector(
 		fallbackModel: fallbackModel,
 		stopChan:      make(chan struct{}),
 		stoppedChan:   make(chan struct{}),
+		metrics:       monitoring.NewMetrics(),
 	}
 }
 
@@ -74,13 +77,16 @@ func (s *ModelSelector) periodicUpdate(ctx context.Context) {
 // updateModels fetches available models and selects the best one
 func (s *ModelSelector) updateModels(ctx context.Context) {
 	s.logger.Info("Updating available models")
+	s.metrics.Incr("model_selector.update.attempts", []string{})
 
 	models, err := s.client.GetAvailableModels(ctx)
 	if err != nil {
+		s.metrics.Incr("model_selector.update.errors", []string{"error:fetch_failed"})
 		s.logger.WithError(err).Error("Failed to fetch available models")
 		// Keep using the current model if update fails
 		if s.getCurrentModelUnsafe() == "" && s.fallbackModel != "" {
 			s.logger.WithField("model", s.fallbackModel).Warn("Using fallback model due to fetch error")
+			s.metrics.Incr("model_selector.fallback_used", []string{"reason:fetch_failed"})
 			s.setCurrentModel(s.fallbackModel)
 		}
 		return
@@ -88,10 +94,12 @@ func (s *ModelSelector) updateModels(ctx context.Context) {
 
 	selected, err := s.client.SelectBestFreeVisionModel(models)
 	if err != nil {
+		s.metrics.Incr("model_selector.update.errors", []string{"error:selection_failed"})
 		s.logger.WithError(err).Error("Failed to select best free vision model")
 		// Use fallback model if selection fails
 		if s.fallbackModel != "" {
 			s.logger.WithField("model", s.fallbackModel).Warn("Using fallback model due to selection error")
+			s.metrics.Incr("model_selector.fallback_used", []string{"reason:selection_failed"})
 			s.setCurrentModel(s.fallbackModel)
 		}
 		return
@@ -100,7 +108,12 @@ func (s *ModelSelector) updateModels(ctx context.Context) {
 	previousModel := s.getCurrentModelUnsafe()
 	s.setCurrentModel(selected.ID)
 
+	// Record successful model selection
+	s.metrics.Incr("model_selector.update.success", []string{})
+	s.metrics.Gauge("model_selector.context_length", float64(selected.ContextLen), []string{"model:" + selected.ID})
+
 	if previousModel != selected.ID {
+		s.metrics.Incr("model_selector.model_changed", []string{})
 		s.logger.WithFields(logrus.Fields{
 			"previous_model": previousModel,
 			"new_model":      selected.ID,
