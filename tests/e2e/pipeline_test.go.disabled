@@ -1,0 +1,354 @@
+package e2e
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/shabohin/photo-tags/pkg/messaging"
+	"github.com/shabohin/photo-tags/pkg/models"
+	"github.com/streadway/amqp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/compose"
+	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/shabohin/photo-tags/tests/e2e/helpers"
+)
+
+const (
+	testTimeout     = 5 * time.Minute
+	operationTimeout = 30 * time.Second
+)
+
+// TestSuite holds the test environment
+type TestSuite struct {
+	compose          *compose.LocalDockerCompose
+	ctx              context.Context
+	cancel           context.CancelFunc
+	rabbitMQURL      string
+	minioEndpoint    string
+	minioAccessKey   string
+	minioSecretKey   string
+	gatewayURL       string
+	mockTelegram     *helpers.MockTelegramServer
+	rabbitMQConn     *amqp.Connection
+	rabbitMQChannel  *amqp.Channel
+	minioClient      *minio.Client
+}
+
+func setupTestEnvironment(t *testing.T) *TestSuite {
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+
+	// Create mock Telegram server
+	botToken := "test_bot_token_" + uuid.New().String()
+	mockTelegram := helpers.NewMockTelegramServer(botToken)
+
+	// Create temporary .env file for docker-compose
+	projectRoot := filepath.Join("..", "..")
+	envPath := filepath.Join(projectRoot, "docker", ".env.test")
+
+	envContent := fmt.Sprintf(`TELEGRAM_TOKEN=%s
+TELEGRAM_BOT_API_ENDPOINT=%s
+OPENROUTER_API_KEY=test_key
+DD_API_KEY=
+`, botToken, mockTelegram.URL())
+
+	err := os.WriteFile(envPath, []byte(envContent), 0644)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		os.Remove(envPath)
+	})
+
+	// Setup docker-compose
+	composeFilePath := filepath.Join(projectRoot, "docker", "docker-compose.yml")
+	identifier := fmt.Sprintf("e2e_test_%s", uuid.New().String()[:8])
+
+	compose := compose.NewLocalDockerCompose(
+		[]string{composeFilePath},
+		identifier,
+		compose.WithLogger(t),
+	)
+
+	// Start services
+	t.Log("Starting docker-compose services...")
+	execError := compose.
+		WithEnv(map[string]string{
+			"TELEGRAM_TOKEN":              botToken,
+			"TELEGRAM_BOT_API_ENDPOINT":   mockTelegram.URL(),
+			"OPENROUTER_API_KEY":          "test_key",
+			"DD_API_KEY":                  "",
+		}).
+		WaitForService("rabbitmq", wait.ForLog("Server startup complete").WithStartupTimeout(60*time.Second)).
+		WaitForService("minio", wait.ForHTTP("/minio/health/live").WithPort("9000/tcp").WithStartupTimeout(30*time.Second)).
+		Up()
+
+	require.NoError(t, execError.Error)
+
+	// Give services time to fully initialize
+	time.Sleep(10 * time.Second)
+
+	suite := &TestSuite{
+		compose:        compose,
+		ctx:            ctx,
+		cancel:         cancel,
+		rabbitMQURL:    "amqp://user:password@localhost:5672/",
+		minioEndpoint:  "localhost:9000",
+		minioAccessKey: "minioadmin",
+		minioSecretKey: "minioadmin",
+		gatewayURL:     "http://localhost:8080",
+		mockTelegram:   mockTelegram,
+	}
+
+	t.Cleanup(func() {
+		suite.cleanup(t)
+	})
+
+	// Initialize connections
+	suite.initializeConnections(t)
+
+	return suite
+}
+
+func (s *TestSuite) initializeConnections(t *testing.T) {
+	var err error
+
+	// Connect to RabbitMQ
+	for i := 0; i < 10; i++ {
+		s.rabbitMQConn, err = amqp.Dial(s.rabbitMQURL)
+		if err == nil {
+			break
+		}
+		t.Logf("Waiting for RabbitMQ connection (attempt %d/10)...", i+1)
+		time.Sleep(2 * time.Second)
+	}
+	require.NoError(t, err, "Failed to connect to RabbitMQ")
+
+	s.rabbitMQChannel, err = s.rabbitMQConn.Channel()
+	require.NoError(t, err)
+
+	// Connect to MinIO
+	s.minioClient, err = minio.New(s.minioEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(s.minioAccessKey, s.minioSecretKey, ""),
+		Secure: false,
+	})
+	require.NoError(t, err)
+
+	// Ensure buckets exist
+	ctx, cancel := context.WithTimeout(s.ctx, operationTimeout)
+	defer cancel()
+
+	buckets := []string{"original", "processed"}
+	for _, bucket := range buckets {
+		exists, err := s.minioClient.BucketExists(ctx, bucket)
+		if err != nil {
+			require.NoError(t, err)
+		}
+		if !exists {
+			err = s.minioClient.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
+			require.NoError(t, err)
+		}
+	}
+}
+
+func (s *TestSuite) cleanup(t *testing.T) {
+	t.Log("Cleaning up test environment...")
+
+	if s.rabbitMQChannel != nil {
+		s.rabbitMQChannel.Close()
+	}
+	if s.rabbitMQConn != nil {
+		s.rabbitMQConn.Close()
+	}
+	if s.mockTelegram != nil {
+		s.mockTelegram.Close()
+	}
+
+	if s.compose != nil {
+		execError := s.compose.Down()
+		if execError.Error != nil {
+			t.Logf("Error stopping compose: %v", execError.Error)
+		}
+	}
+
+	s.cancel()
+}
+
+// TestFullPipelineSuccess tests the complete pipeline from upload to processing
+func TestFullPipelineSuccess(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create test image
+	testImage, err := helpers.CreateTestImage(800, 600)
+	require.NoError(t, err)
+
+	// Save test image to temp file
+	tempDir := t.TempDir()
+	imagePath := filepath.Join(tempDir, "test_image.jpg")
+	err = os.WriteFile(imagePath, testImage, 0644)
+	require.NoError(t, err)
+
+	// Upload image to MinIO original bucket
+	imageID := uuid.New().String()
+	ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+	defer cancel()
+
+	_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", imagePath, minio.PutObjectOptions{
+		ContentType: "image/jpeg",
+	})
+	require.NoError(t, err)
+
+	t.Logf("Uploaded test image with ID: %s", imageID)
+
+	// Publish message to image_upload queue
+	message := models.ImageMessage{
+		ImageID:  imageID,
+		UserID:   123456,
+		FileName: "test_image.jpg",
+	}
+
+	messageBytes, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	err = suite.rabbitMQChannel.Publish(
+		"",                            // exchange
+		messaging.QueueImageUpload,    // routing key
+		false,                         // mandatory
+		false,                         // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+	require.NoError(t, err)
+
+	t.Log("Published message to image_upload queue")
+
+	// Wait for processed image
+	processedImagePath := filepath.Join(tempDir, "processed_image.jpg")
+	err = suite.waitForProcessedImage(t, imageID, processedImagePath, 2*time.Minute)
+	require.NoError(t, err)
+
+	t.Log("Received processed image")
+
+	// Validate EXIF metadata
+	exifData, err := helpers.ExtractExifData(processedImagePath)
+	if err != nil {
+		t.Logf("Warning: Could not extract EXIF data (exiftool might not be installed): %v", err)
+	} else {
+		assert.True(t, helpers.HasMetadata(exifData), "Processed image should have metadata")
+		t.Logf("EXIF Data: %+v", exifData)
+	}
+}
+
+func (s *TestSuite) waitForProcessedImage(t *testing.T, imageID string, outputPath string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(s.ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for processed image")
+		case <-ticker.C:
+			// Check if processed image exists in MinIO
+			objectName := imageID + ".jpg"
+			obj, err := s.minioClient.GetObject(ctx, "processed", objectName, minio.GetObjectOptions{})
+			if err != nil {
+				continue
+			}
+
+			// Download the object
+			localFile, err := os.Create(outputPath)
+			if err != nil {
+				obj.Close()
+				return err
+			}
+
+			_, err = localFile.ReadFrom(obj)
+			localFile.Close()
+			obj.Close()
+
+			if err != nil {
+				continue
+			}
+
+			t.Logf("Successfully downloaded processed image: %s", objectName)
+			return nil
+		}
+	}
+}
+
+// TestPipelineWithInvalidImage tests pipeline with invalid image
+func TestPipelineWithInvalidImage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	suite := setupTestEnvironment(t)
+
+	// Create invalid image data
+	invalidData := []byte("this is not a valid image")
+	imageID := uuid.New().String()
+
+	// Upload invalid data to MinIO
+	ctx, cancel := context.WithTimeout(suite.ctx, operationTimeout)
+	defer cancel()
+
+	tempDir := t.TempDir()
+	invalidPath := filepath.Join(tempDir, "invalid.jpg")
+	err := os.WriteFile(invalidPath, invalidData, 0644)
+	require.NoError(t, err)
+
+	_, err = suite.minioClient.FPutObject(ctx, "original", imageID+".jpg", invalidPath, minio.PutObjectOptions{
+		ContentType: "image/jpeg",
+	})
+	require.NoError(t, err)
+
+	// Publish message
+	message := models.ImageMessage{
+		ImageID:  imageID,
+		UserID:   123456,
+		FileName: "invalid.jpg",
+	}
+
+	messageBytes, err := json.Marshal(message)
+	require.NoError(t, err)
+
+	err = suite.rabbitMQChannel.Publish(
+		"",
+		messaging.QueueImageUpload,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        messageBytes,
+		},
+	)
+	require.NoError(t, err)
+
+	// Wait a bit to ensure the message is processed
+	time.Sleep(10 * time.Second)
+
+	// Verify that processed image was NOT created
+	ctx2, cancel2 := context.WithTimeout(suite.ctx, 5*time.Second)
+	defer cancel2()
+
+	_, err = suite.minioClient.StatObject(ctx2, "processed", imageID+".jpg", minio.StatObjectOptions{})
+	assert.Error(t, err, "Invalid image should not be processed successfully")
+}

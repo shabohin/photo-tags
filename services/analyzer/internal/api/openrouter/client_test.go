@@ -184,3 +184,140 @@ func TestAnalyzeImage_InvalidMetadataJSON(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse metadata")
 }
+
+func TestGetAvailableModels_Success(t *testing.T) {
+	responseBody := `{
+		"data": [
+			{
+				"id": "google/gemini-2.0-flash-exp:free",
+				"name": "Gemini 2.0 Flash (free)",
+				"pricing": {
+					"prompt": "0",
+					"completion": "0"
+				},
+				"context_length": 32768,
+				"architecture": {
+					"modality": "multimodal"
+				}
+			},
+			{
+				"id": "openai/gpt-4o",
+				"name": "GPT-4o",
+				"pricing": {
+					"prompt": "0.005",
+					"completion": "0.015"
+				},
+				"context_length": 128000,
+				"architecture": {
+					"modality": "text"
+				}
+			}
+		]
+	}`
+
+	mockTransport := &MockTransport{
+		Response: newMockResponse(http.StatusOK, responseBody),
+	}
+
+	logger := logrus.New()
+	client := NewClient("test-api-key", "test-model", 100, 0.5, "Test prompt", logger)
+	client.httpClient = &http.Client{Transport: mockTransport}
+
+	models, err := client.GetAvailableModels(context.Background())
+
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(models))
+	assert.Equal(t, "google/gemini-2.0-flash-exp:free", models[0].ID)
+	assert.Equal(t, "0", models[0].Pricing.Prompt)
+	assert.Equal(t, 32768, models[0].ContextLen)
+}
+
+func TestGetAvailableModels_ErrorResponse(t *testing.T) {
+	mockTransport := &MockTransport{
+		Response: newMockResponse(http.StatusInternalServerError, `{"error": "Server Error"}`),
+	}
+
+	logger := logrus.New()
+	client := NewClient("test-api-key", "test-model", 100, 0.5, "Test prompt", logger)
+	client.httpClient = &http.Client{Transport: mockTransport}
+
+	_, err := client.GetAvailableModels(context.Background())
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "models API error")
+}
+
+func TestSelectBestFreeVisionModel_Success(t *testing.T) {
+	models := []Model{
+		{
+			ID:         "google/gemini-2.0-flash-exp:free",
+			Name:       "Gemini 2.0 Flash (free)",
+			Pricing:    Pricing{Prompt: "0", Completion: "0"},
+			ContextLen: 32768,
+			Architecture: Architecture{
+				Modality: "multimodal",
+			},
+		},
+		{
+			ID:         "meta-llama/llama-3.2-11b-vision-instruct:free",
+			Name:       "Llama 3.2 Vision (free)",
+			Pricing:    Pricing{Prompt: "0", Completion: "0"},
+			ContextLen: 8192,
+			Architecture: Architecture{
+				Modality: "multimodal",
+			},
+		},
+		{
+			ID:         "openai/gpt-4o",
+			Name:       "GPT-4o",
+			Pricing:    Pricing{Prompt: "0.005", Completion: "0.015"},
+			ContextLen: 128000,
+			Architecture: Architecture{
+				Modality: "text+image",
+			},
+		},
+	}
+
+	logger := logrus.New()
+	client := NewClient("test-api-key", "test-model", 100, 0.5, "Test prompt", logger)
+
+	selected, err := client.SelectBestFreeVisionModel(models)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, selected)
+	// Should select the free model with highest context length
+	assert.Equal(t, "google/gemini-2.0-flash-exp:free", selected.ID)
+	assert.Equal(t, 32768, selected.ContextLen)
+}
+
+func TestSelectBestFreeVisionModel_NoModels(t *testing.T) {
+	logger := logrus.New()
+	client := NewClient("test-api-key", "test-model", 100, 0.5, "Test prompt", logger)
+
+	_, err := client.SelectBestFreeVisionModel([]Model{})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no models available")
+}
+
+func TestSelectBestFreeVisionModel_NoFreeModels(t *testing.T) {
+	models := []Model{
+		{
+			ID:         "openai/gpt-4o",
+			Name:       "GPT-4o",
+			Pricing:    Pricing{Prompt: "0.005", Completion: "0.015"},
+			ContextLen: 128000,
+			Architecture: Architecture{
+				Modality: "text+image",
+			},
+		},
+	}
+
+	logger := logrus.New()
+	client := NewClient("test-api-key", "test-model", 100, 0.5, "Test prompt", logger)
+
+	_, err := client.SelectBestFreeVisionModel(models)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no free vision models available")
+}

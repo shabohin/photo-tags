@@ -13,6 +13,7 @@ The project is built using a microservice architecture and includes the followin
 -   **Gateway Service** - receives images and sends results via Telegram API
 -   **Analyzer Service** - generates metadata using free vision models from OpenRouter with automatic model selection
 -   **Processor Service** - writes metadata to images
+-   **File Watcher Service** - monitors directories for batch image processing without Telegram
 -   **RabbitMQ** - message exchange between services
 -   **MinIO** - image storage
 
@@ -26,13 +27,30 @@ The Analyzer service automatically:
 
 ## Installation and Launch
 
-### Prerequisites
+### Deployment Options
+
+The service supports two deployment methods:
+
+1. **Docker Deployment** (Recommended for most users)
+   - Easier setup with consistent environment
+   - Best for development teams and production servers
+   - See [Docker Setup](#docker-deployment) below
+
+2. **Native/Local Deployment** (Recommended for Raspberry Pi and resource-constrained devices)
+   - Better performance on ARM devices
+   - Lower memory footprint
+   - Direct access to system resources
+   - See [Local Deployment Guide](docs/LOCAL_DEPLOYMENT.md)
+
+### Docker Deployment
+
+#### Prerequisites
 
 -   Docker and Docker Compose
 -   Telegram bot token (get from [@BotFather](https://t.me/BotFather))
 -   OpenRouter API key for accessing vision models (free tier available)
 
-### Starting the Project
+#### Starting the Project
 
 1. Clone the repository:
 
@@ -60,13 +78,54 @@ The Analyzer service automatically:
     ./scripts/setup.sh
     ```
 
-### Stopping Services
+#### Stopping Services
 
 To stop all services, use:
 
 ```bash
 ./scripts/stop.sh
 ```
+
+### Local/Native Deployment
+
+For running on bare metal without Docker (recommended for Raspberry Pi, macOS development, or resource-constrained environments):
+
+#### Quick Start
+
+```bash
+# 1. Install all dependencies
+./scripts/install-local.sh
+
+# 2. Configure environment
+cp config/.env.local.example config/.env.local
+# Edit config/.env.local and set TELEGRAM_TOKEN and OPENROUTER_API_KEY
+
+# 3. Start all services
+./scripts/run-local.sh start
+
+# 4. Check status
+./scripts/run-local.sh status
+```
+
+#### Platform Support
+
+- ✅ **macOS** (Intel and Apple Silicon M1/M2/M3)
+- ✅ **Linux** (Ubuntu, Debian, Raspberry Pi OS)
+- ✅ **ARM64** (Raspberry Pi 3/4, other ARM devices)
+- ✅ **x86_64** (Standard Linux servers)
+
+#### Managing Services
+
+```bash
+./scripts/run-local.sh start    # Start all services
+./scripts/run-local.sh stop     # Stop all services
+./scripts/run-local.sh restart  # Restart all services
+./scripts/run-local.sh status   # Show service status
+./scripts/run-local.sh logs     # View all logs
+./scripts/run-local.sh build    # Rebuild services
+```
+
+For detailed platform-specific instructions, troubleshooting, and configuration options, see the [Local Deployment Guide](docs/LOCAL_DEPLOYMENT.md).
 
 ## Usage
 
@@ -99,13 +158,92 @@ The service handles all technical complexities (model selection, rate limits, re
 -   **Description** - more detailed description up to 200 characters
 -   **Keywords** - 49 keywords describing the image
 
+### File Watcher Service - Batch Processing
+
+In addition to the Telegram bot interface, you can process images in batch mode using the File Watcher Service:
+
+1. **Copy images to input directory**:
+```bash
+docker cp /path/to/images/* filewatcher:/app/input/
+```
+
+2. **Monitor processing**:
+```bash
+curl http://localhost:8081/stats
+```
+
+3. **Retrieve processed images**:
+```bash
+docker cp filewatcher:/app/output/. /path/to/output/
+```
+
+4. **Trigger manual scan**:
+```bash
+curl -X POST http://localhost:8081/scan
+```
+
+For more details, see [File Watcher Service README](services/filewatcher/README.md).
+
 ## Monitoring
+
+The service includes comprehensive monitoring with Datadog for APM, metrics, and logs. See the [Monitoring Guide](docs/monitoring.md) for detailed setup instructions.
+
+### Quick Start with Datadog
+
+1. Get a free API key from [datadoghq.com](https://www.datadoghq.com/)
+2. Add to `docker/.env`:
+   ```bash
+   DD_API_KEY=your_api_key_here
+   DD_ENV=development
+   ```
+3. Restart services: `./scripts/start.sh`
+
+## Backup and Disaster Recovery
+
+The service includes automated backup and restore functionality for all critical data. See the [Backup and Recovery Guide](docs/backup-and-recovery.md) for complete documentation.
+
+### Quick Start with Backups
+
+**Create Manual Backup**:
+```bash
+./scripts/backup.sh
+```
+
+**Setup Automated Daily Backups**:
+```bash
+./scripts/setup-backup-cron.sh
+```
+
+**Restore from Backup**:
+```bash
+./scripts/restore.sh
+```
+
+### What Gets Backed Up
+
+- **MinIO Buckets**: All original and processed images
+- **RabbitMQ**: Queue definitions, exchanges, and configurations
+- **Retention**: Last 7 days of backups (configurable)
+
+### Backup Features
+
+- Automated daily backups via cron
+- Compressed tar.gz archives with timestamps
+- Automatic cleanup of old backups
+- Interactive restore with backup selection
+- Verification and validation of backup integrity
+
+For detailed instructions, configuration options, and troubleshooting, see the [Backup and Recovery Guide](docs/backup-and-recovery.md).
+
+### Available Interfaces
 
 After startup, you can access the following interfaces:
 
 -   **RabbitMQ Management**: [http://localhost:15672](http://localhost:15672) (login: user, password: password)
 -   **MinIO Console**: [http://localhost:9001](http://localhost:9001) (login: minioadmin, password: minioadmin)
 -   **Gateway API**: [http://localhost:8080](http://localhost:8080) (health check available at `/health`)
+-   **Dead Letter Queue Admin**: [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs) (monitor and retry failed jobs)
+-   **Datadog Dashboard**: [app.datadoghq.com](https://app.datadoghq.com/) (if configured)
 
 ## Service Logs
 
@@ -172,6 +310,18 @@ Robust error handling includes:
 - **Model Failover**: Attempts multiple models when primary is unavailable
 - **Queue Persistence**: No requests lost during service interruptions
 - **User Communication**: Clear status updates without technical jargon
+
+### Dead Letter Queue
+
+The service implements a Dead Letter Queue (DLQ) for managing failed messages:
+- **Automatic Failure Tracking**: Failed jobs are automatically sent to DLQ instead of being lost
+- **Error Visibility**: View all failed jobs with error reasons and retry counts
+- **Manual Retry**: Web UI for reviewing and requeuing failed jobs
+- **Full Metadata**: Each failed job includes original queue, message body, and failure details
+
+Access the DLQ admin interface at [http://localhost:8080/admin/failed-jobs](http://localhost:8080/admin/failed-jobs)
+
+For detailed documentation, see [Dead Letter Queue Guide](docs/dead-letter-queue.md).
 
 
 ## Development

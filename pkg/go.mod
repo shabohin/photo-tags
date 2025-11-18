@@ -3,9 +3,12 @@ module github.com/shabohin/photo-tags/pkg
 go 1.24.0
 
 require (
+	github.com/disintegration/imaging v1.6.2
+	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.87
 	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -19,6 +22,7 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect

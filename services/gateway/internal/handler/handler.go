@@ -13,11 +13,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shabohin/photo-tags/pkg/database"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/models"
 	"github.com/shabohin/photo-tags/pkg/storage"
+	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
+	"github.com/shabohin/photo-tags/services/gateway/internal/stats"
 	imagestorage "github.com/shabohin/photo-tags/services/gateway/internal/storage"
 )
 
@@ -29,6 +32,9 @@ type Handler struct {
 	imageStorage *imagestorage.ImageStorage
 	minioClient  storage.MinIOInterface
 	rabbitMQ     messaging.RabbitMQInterface
+	batchHandler *batch.Handler
+	adminHandler *AdminHandler
+	statsHandler *stats.Handler
 }
 
 // NewHandler creates a new Handler
@@ -36,7 +42,9 @@ func NewHandler(
 	logger *logging.Logger,
 	cfg *config.Config,
 	minioClient storage.MinIOInterface,
-	rabbitMQ messaging.RabbitMQInterface,
+	rabbitmqClient messaging.RabbitMQInterface,
+	batchHandler *batch.Handler,
+	repo database.RepositoryInterface,
 ) *Handler {
 	// Load templates
 	tmpl := template.Must(template.New("").Funcs(template.FuncMap{
@@ -45,13 +53,21 @@ func NewHandler(
 		},
 	}).ParseGlob("web/templates/*.html"))
 
+	var statsHandler *stats.Handler
+	if repo != nil {
+		statsHandler = stats.NewHandler(logger, repo)
+	}
+
 	return &Handler{
 		logger:       logger,
 		cfg:          cfg,
 		templates:    tmpl,
 		imageStorage: imagestorage.NewImageStorage(),
 		minioClient:  minioClient,
-		rabbitMQ:     rabbitMQ,
+		rabbitMQ:     rabbitmqClient,
+		batchHandler: batchHandler,
+		adminHandler: NewAdminHandler(logger, rabbitmqClient),
+		statsHandler: statsHandler,
 	}
 }
 
@@ -89,11 +105,33 @@ func (h *Handler) SetupRoutes() http.Handler {
 	mux.HandleFunc("/gallery", h.GalleryPage)
 	mux.HandleFunc("/image/", h.ImageDetailsPage)
 
-	// API endpoints
+	// API endpoints for web UI
 	mux.HandleFunc("/api/upload", h.UploadImage)
 	mux.HandleFunc("/api/status/", h.GetStatus)
 	mux.HandleFunc("/api/images", h.GetImages)
 	mux.HandleFunc("/api/image/", h.HandleImageAPI)
+
+	// Add batch API routes if batch handler is configured
+	if h.batchHandler != nil {
+		h.batchHandler.SetupRoutes(mux)
+	}
+
+	// Admin routes
+	if h.adminHandler != nil {
+		mux.HandleFunc("/admin/failed-jobs", h.adminHandler.FailedJobsUI)
+		mux.HandleFunc("/admin/failed-jobs/api", h.adminHandler.GetFailedJobs)
+		mux.HandleFunc("/admin/failed-jobs/requeue", h.adminHandler.RequeueFailedJob)
+	}
+
+	// Statistics API routes
+	if h.statsHandler != nil {
+		mux.HandleFunc("/api/v1/stats/user/images", h.statsHandler.GetUserImages)
+		mux.HandleFunc("/api/v1/stats/user/summary", h.statsHandler.GetUserStats)
+		mux.HandleFunc("/api/v1/stats/daily", h.statsHandler.GetDailyStats)
+		mux.HandleFunc("/api/v1/stats/errors", h.statsHandler.GetRecentErrors)
+		mux.HandleFunc("/api/v1/stats/errors/summary", h.statsHandler.GetErrorStats)
+		mux.HandleFunc("/api/v1/images/trace", h.statsHandler.GetImageByTraceID)
+	}
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

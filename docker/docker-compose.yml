@@ -36,6 +36,23 @@ services:
             timeout: 5s
             retries: 5
 
+    postgres:
+        container_name: postgres
+        image: postgres:16-alpine
+        ports:
+            - '5432:5432'
+        environment:
+            POSTGRES_DB: photo_tags
+            POSTGRES_USER: photo_tags_user
+            POSTGRES_PASSWORD: photo_tags_password
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U photo_tags_user -d photo_tags']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
     gateway:
         container_name: gateway
         build:
@@ -50,12 +67,19 @@ services:
                 condition: service_healthy
             minio:
                 condition: service_healthy
+            postgres:
+                condition: service_healthy
         env_file: .env
         environment:
             - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - POSTGRES_HOST=postgres
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=photo_tags
+            - POSTGRES_USER=photo_tags_user
+            - POSTGRES_PASSWORD=photo_tags_password
 
     analyzer:
         container_name: analyzer
@@ -76,15 +100,64 @@ services:
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
             - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-        # env_file: ${ENV_FILE}
 
     processor:
         container_name: processor
         build:
+            context: ../services/processor
+            dockerfile: Dockerfile
+        depends_on:
+            rabbitmq:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
+        environment:
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - RABBITMQ_CONSUMER_QUEUE=metadata_generated
+            - RABBITMQ_PUBLISHER_QUEUE=image_processed
+            - MINIO_ENDPOINT=minio:9000
+            - MINIO_ACCESS_KEY=minioadmin
+            - MINIO_SECRET_KEY=minioadmin
+            - MINIO_ORIGINAL_BUCKET=original
+            - MINIO_PROCESSED_BUCKET=processed
+            - EXIFTOOL_BINARY_PATH=/usr/bin/exiftool
+            - EXIFTOOL_TEMP_DIR=/tmp/processor
+            - WORKER_CONCURRENCY=3
+            - LOG_LEVEL=info
+            - LOG_FORMAT=json
+        restart: unless-stopped
+        volumes:
+            - processor_temp:/tmp/processor
+
+    dashboard:
+        container_name: dashboard
+        build:
+            context: ../services/dashboard
+            dockerfile: Dockerfile
+        ports:
+            - '3000:3000'
+        depends_on:
+            rabbitmq:
+                condition: service_healthy
+        environment:
+            - DASHBOARD_PORT=3000
+            - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - GATEWAY_URL=http://gateway:8080
+            - ANALYZER_URL=http://analyzer:8081
+            - PROCESSOR_URL=http://processor:8082
+            - MINIO_URL=http://localhost:9001
+            - RABBITMQ_MGMT_URL=http://localhost:15672
+        restart: unless-stopped
+
+    filewatcher:
+        container_name: filewatcher
+        build:
             context: ..
             dockerfile: docker/Dockerfile.service
             args:
-                SERVICE: processor
+                SERVICE: filewatcher
+        ports:
+            - '8082:8081'
         depends_on:
             rabbitmq:
                 condition: service_healthy
@@ -95,7 +168,45 @@ services:
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - INPUT_DIR=/app/input
+            - OUTPUT_DIR=/app/output
+            - PROCESSED_DIR=/app/input/processed
+            - SCAN_INTERVAL_SECONDS=5
+            - USE_FSNOTIFY=true
+            - MAX_FILE_SIZE_MB=50
+            - SERVER_PORT=8081
+        restart: unless-stopped
+        volumes:
+            - filewatcher_input:/app/input
+            - filewatcher_output:/app/output
+
+    datadog:
+        container_name: datadog-agent
+        image: gcr.io/datadoghq/agent:7
+        pid: host
+        ports:
+            - '8126:8126' # APM traces
+            - '8125:8125/udp' # DogStatsD metrics
+        environment:
+            - DD_API_KEY=${DD_API_KEY}
+            - DD_SITE=${DD_SITE:-datadoghq.com}
+            - DD_LOGS_ENABLED=true
+            - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+            - DD_APM_ENABLED=true
+            - DD_APM_NON_LOCAL_TRAFFIC=true
+            - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+            - DD_DOCKER_LABELS_AS_TAGS='{"*":"true"}'
+            - DD_TAGS=env:${DD_ENV:-development} service:photo-tags
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - /proc/:/host/proc/:ro
+            - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+            - /var/lib/docker/containers:/var/lib/docker/containers:ro
 
 volumes:
     rabbitmq_data:
     minio_data:
+    postgres_data:
+    processor_temp:
+    filewatcher_input:
+    filewatcher_output:

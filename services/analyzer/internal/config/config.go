@@ -16,6 +16,10 @@ type Config struct {
 		Format string
 	}
 
+	HTTP struct {
+		Port int
+	}
+
 	RabbitMQ struct {
 		URL               string
 		ConsumerQueue     string
@@ -32,6 +36,7 @@ type Config struct {
 		Temperature            float64
 		MaxTokens              int
 		UseOpenRouterGoAdapter bool
+		ModelCheckInterval     time.Duration
 	}
 
 	MinIO struct {
@@ -54,6 +59,9 @@ type Config struct {
 
 func New() *Config {
 	cfg := &Config{}
+
+	// HTTP Config
+	cfg.HTTP.Port = getEnvAsInt("HTTP_PORT", 8081)
 
 	// RabbitMQ Config
 	cfg.RabbitMQ.URL = getEnv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
@@ -82,6 +90,7 @@ func New() *Config {
 		"Return strictly in JSON format with fields 'title', 'description' and 'keywords'."
 	cfg.OpenRouter.Prompt = getEnv("OPENROUTER_PROMPT", defaultPrompt)
 	cfg.OpenRouter.UseOpenRouterGoAdapter = getEnvAsBool("USE_OPENROUTERGO_ADAPTER", false)
+	cfg.OpenRouter.ModelCheckInterval = getEnvAsDuration("OPENROUTER_MODEL_CHECK_INTERVAL", 24*time.Hour)
 
 	// Log Config
 	cfg.Log.Level = getEnv("LOG_LEVEL", "info")

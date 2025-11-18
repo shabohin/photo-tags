@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Tags - Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Photo Tags Monitoring Dashboard</h1>
+            <div class="last-update">
+                Last updated: <span id="lastUpdate">--:--:--</span>
+                <button id="refreshBtn" class="btn-refresh">Refresh</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Services Status Section -->
+            <section class="card">
+                <h2>Services Status</h2>
+                <div id="servicesStatus" class="services-grid">
+                    <div class="service-card loading">
+                        <div class="service-name">Loading...</div>
+                        <div class="service-status">
+                            <span class="status-indicator unknown"></span>
+                            <span class="status-text">--</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- External Links Section -->
+            <section class="card">
+                <h2>Management Consoles</h2>
+                <div class="links-grid">
+                    <a href="http://localhost:15672" target="_blank" class="link-card">
+                        <div class="link-icon">🐰</div>
+                        <div class="link-name">RabbitMQ</div>
+                        <div class="link-url">localhost:15672</div>
+                    </a>
+                    <a href="http://localhost:9001" target="_blank" class="link-card">
+                        <div class="link-icon">📦</div>
+                        <div class="link-name">MinIO</div>
+                        <div class="link-url">localhost:9001</div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- RabbitMQ Queues Section -->
+            <section class="card">
+                <h2>RabbitMQ Queues</h2>
+                <div id="queuesStatus" class="queues-container">
+                    <div class="loading-text">Loading queues...</div>
+                </div>
+            </section>
+
+            <!-- Metrics Section -->
+            <section class="card">
+                <h2>Metrics</h2>
+                <div id="metricsStats" class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Images in Queue</div>
+                        <div class="metric-value" id="queuedImages">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Processed</div>
+                        <div class="metric-value" id="totalProcessed">--</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Photo Tags System v1.0.0 | Auto-refresh every 10 seconds</p>
+        </footer>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
