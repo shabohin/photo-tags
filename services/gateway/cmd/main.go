@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
+	"github.com/shabohin/photo-tags/pkg/models"
 	"github.com/shabohin/photo-tags/pkg/storage"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 	"github.com/shabohin/photo-tags/services/gateway/internal/handler"
@@ -64,13 +66,25 @@ func main() {
 	defer rabbitmqClient.Close()
 
 	// Create and start HTTP handler
-	httpHandler := handler.NewHandler(logger, cfg)
+	httpHandler := handler.NewHandler(logger, cfg, minioClient, rabbitmqClient)
 	go func() {
 		if err := httpHandler.StartServer(ctx); err != nil {
 			logger.Error("HTTP server error", err)
 		}
 	}()
 	logger.Info("HTTP server started", nil)
+
+	// Start metadata_generated consumer for web uploads
+	metadataConsumer := &metadataGeneratedConsumer{
+		logger:       logger,
+		imageStorage: httpHandler.GetImageStorage(),
+	}
+	go func() {
+		if err := metadataConsumer.consumeMessages(ctx, rabbitmqClient); err != nil {
+			logger.Error("Metadata generated consumer error", err)
+		}
+	}()
+	logger.Info("Metadata generated consumer started", nil)
 
 	// Create and start Telegram bot if token is provided
 	if cfg.TelegramToken != "" {
@@ -106,6 +120,56 @@ func main() {
 		logger.Info("Shutdown timed out, forcing exit", nil)
 	case <-time.After(2 * time.Second):
 		logger.Info("Gateway Service shutdown complete", nil)
+	}
+}
+
+// metadataGeneratedConsumer consumes messages from the metadata_generated queue
+type metadataGeneratedConsumer struct {
+	logger       *logging.Logger
+	imageStorage interface {
+		UpdateMetadata(traceID string, metadata *models.Metadata, processedPath string) bool
+	}
+}
+
+func (c *metadataGeneratedConsumer) consumeMessages(ctx context.Context, rabbitMQ messaging.RabbitMQInterface) error {
+	messages, err := rabbitMQ.ConsumeMessagesChannel(messaging.QueueMetadataGenerated)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case msg, ok := <-messages:
+			if !ok {
+				return nil
+			}
+			c.handleMessage(msg)
+		}
+	}
+}
+
+func (c *metadataGeneratedConsumer) handleMessage(msg []byte) {
+	var generated models.MetadataGenerated
+
+	if err := json.Unmarshal(msg, &generated); err != nil {
+		c.logger.Error("Failed to unmarshal metadata_generated message", err)
+		return
+	}
+
+	c.logger.Info("Processing metadata_generated message", map[string]interface{}{
+		"trace_id": generated.TraceID,
+		"title":    generated.Metadata.Title,
+	})
+
+	// Update metadata (use original path as processed path since processor is not implemented)
+	if c.imageStorage.UpdateMetadata(generated.TraceID, &generated.Metadata, generated.OriginalPath) {
+		c.logger.Info("Metadata updated successfully", map[string]interface{}{
+			"trace_id": generated.TraceID,
+		})
+	} else {
+		c.logger.Error("Failed to update metadata - trace ID not found", nil)
 	}
 }
 
@@ -163,6 +227,10 @@ func initializeDependencies(
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageUpload); err != nil {
 		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueImageUpload, err)
+	}
+
+	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueMetadataGenerated); err != nil {
+		return nil, nil, fmt.Errorf("failed to declare queue %s: %w", messaging.QueueMetadataGenerated, err)
 	}
 
 	if _, err := rabbitmqClient.DeclareQueue(messaging.QueueImageProcessed); err != nil {

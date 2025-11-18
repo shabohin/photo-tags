@@ -1,0 +1,60 @@
+{{define "upload"}}
+<div class="upload-section">
+    <h2>Upload Image</h2>
+    <p>Upload an image to automatically generate title, description, and keywords using AI.</p>
+
+    <form class="upload-form"
+          hx-post="/api/upload"
+          hx-target="#result"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#upload-spinner">
+
+        <sl-input
+            type="file"
+            name="image"
+            accept="image/jpeg,image/jpg,image/png"
+            required
+            help-text="Supported formats: JPEG, PNG">
+            <sl-icon name="image" slot="prefix"></sl-icon>
+        </sl-input>
+
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <sl-button type="submit" variant="primary" size="large">
+                <sl-icon slot="prefix" name="cloud-upload"></sl-icon>
+                Upload Image
+            </sl-button>
+            <sl-spinner id="upload-spinner" class="htmx-indicator" style="font-size: 2rem;"></sl-spinner>
+        </div>
+    </form>
+
+    <div id="result"></div>
+</div>
+
+<div class="upload-section">
+    <h3>How it works</h3>
+    <sl-card>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; padding: 1rem;">
+            <div style="text-align: center;">
+                <sl-icon name="cloud-upload" style="font-size: 2.5rem; color: var(--sl-color-primary-600);"></sl-icon>
+                <h4>1. Upload</h4>
+                <p>Send your image to our service</p>
+            </div>
+            <div style="text-align: center;">
+                <sl-icon name="cpu" style="font-size: 2.5rem; color: var(--sl-color-purple-600);"></sl-icon>
+                <h4>2. Analyze</h4>
+                <p>AI analyzes the image content</p>
+            </div>
+            <div style="text-align: center;">
+                <sl-icon name="tags" style="font-size: 2.5rem; color: var(--sl-color-blue-600);"></sl-icon>
+                <h4>3. Generate</h4>
+                <p>Creates metadata and keywords</p>
+            </div>
+            <div style="text-align: center;">
+                <sl-icon name="download" style="font-size: 2.5rem; color: var(--sl-color-green-600);"></sl-icon>
+                <h4>4. Download</h4>
+                <p>Get your enhanced image</p>
+            </div>
+        </div>
+    </sl-card>
+</div>
+{{end}}

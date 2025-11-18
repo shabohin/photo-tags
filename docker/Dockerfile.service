@@ -18,12 +18,18 @@ COPY ./pkg/ /pkg/
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./cmd/
 
+# Create web directory for runtime (if exists)
+RUN mkdir -p /app/web
+
 # Final image
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
+WORKDIR /app
+
 COPY --from=builder /bin/service /app/service
+COPY --from=builder /app/web /app/web
 
 # Run service
 CMD ["/app/service"]

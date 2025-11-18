@@ -1,0 +1,59 @@
+{{define "gallery"}}
+<div class="upload-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Image Gallery</h2>
+        <sl-badge variant="primary" pill>{{.TotalImages}} images</sl-badge>
+    </div>
+
+    {{if .Images}}
+    <div class="gallery-grid">
+        {{range .Images}}
+        <div class="image-card" onclick="window.location.href='/image/{{.ID}}'">
+            <img src="/api/image/{{.ID}}/thumbnail"
+                 alt="{{.Metadata.Title}}"
+                 class="image-preview"
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22200%22%3E%3Crect fill=%22%23eee%22 width=%22280%22 height=%22200%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ENo Preview%3C/text%3E%3C/svg%3E'">
+
+            <div class="image-info">
+                <h3 class="image-title">{{if .Metadata.Title}}{{.Metadata.Title}}{{else}}{{.OriginalFilename}}{{end}}</h3>
+
+                {{if .Metadata.Description}}
+                <p class="image-meta">{{.Metadata.Description}}</p>
+                {{end}}
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                    <sl-badge variant="{{if eq .Status "completed"}}success{{else if eq .Status "failed"}}danger{{else}}warning{{end}}" size="small">
+                        {{.Status}}
+                    </sl-badge>
+                    <small class="image-meta">{{.UploadedAt}}</small>
+                </div>
+
+                {{if .Metadata.Keywords}}
+                <div class="keywords-list" style="margin-top: 0.75rem;">
+                    {{range $index, $keyword := .Metadata.Keywords}}
+                        {{if lt $index 3}}
+                        <sl-tag size="small">{{$keyword}}</sl-tag>
+                        {{end}}
+                    {{end}}
+                    {{if gt (len .Metadata.Keywords) 3}}
+                    <sl-tag size="small" variant="neutral">+{{subtract (len .Metadata.Keywords) 3}} more</sl-tag>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <sl-icon name="images"></sl-icon>
+        <h3>No images yet</h3>
+        <p>Upload your first image to get started!</p>
+        <sl-button variant="primary" onclick="document.querySelector('sl-tab[panel=upload]').click()">
+            <sl-icon slot="prefix" name="cloud-upload"></sl-icon>
+            Upload Image
+        </sl-button>
+    </div>
+    {{end}}
+</div>
+{{end}}
