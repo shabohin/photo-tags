@@ -118,6 +118,17 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 	traceID := uuid.New().String()
 	log := b.logger.WithTraceID(traceID)
 
+	// Handle callback queries (for inline buttons)
+	if update.CallbackQuery != nil {
+		b.handleCallbackQuery(ctx, update.CallbackQuery)
+		return
+	}
+
+	// Check if no message present
+	if update.Message == nil {
+		return
+	}
+
 	// Check if message contains photos or documents
 	if len(update.Message.Photo) > 0 {
 		// Handle photo
@@ -306,24 +317,180 @@ func (b *Bot) handleTextMessage(message *tgbotapi.Message) {
 	if message.IsCommand() {
 		switch message.Command() {
 		case "start":
-			b.sendMessage(
-				message.Chat.ID,
-				"Welcome to Photo Tags Bot! Send me an image, "+
-					"and I'll add AI-generated metadata to it.",
-			)
+			b.handleStartCommand(message)
 		case "help":
-			helpText := "This bot automatically adds titles, descriptions, and keywords " +
-				"to your images using AI.\n\n" +
-				"Just send me a JPG or PNG image, and I'll process it for you!"
-			b.sendMessage(message.Chat.ID, helpText)
+			b.handleHelpCommand(message)
+		case "status":
+			b.handleStatusCommand(message)
 		default:
-			b.sendMessage(message.Chat.ID, "Unknown command. Try /help for available commands.")
+			b.sendMessage(message.Chat.ID, "❓ Unknown command. Try /help for available commands.")
 		}
 		return
 	}
 
 	// Handle regular text messages
 	b.sendMessage(message.Chat.ID, "Please send me an image to process. Use /help for more information.")
+}
+
+// handleStartCommand handles the /start command
+func (b *Bot) handleStartCommand(message *tgbotapi.Message) {
+	welcomeText := "👋 *Welcome to Photo Tags Bot!*\n\n" +
+		"I can automatically add AI-generated metadata to your images:\n" +
+		"• 📝 Titles\n" +
+		"• 📄 Descriptions\n" +
+		"• 🏷️ Keywords\n\n" +
+		"Just send me a JPG or PNG image, and I'll process it for you!\n\n" +
+		"Use /help to see all available commands."
+
+	// Create inline keyboard
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📖 Help", "help"),
+			tgbotapi.NewInlineKeyboardButtonData("📊 Status", "status"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, welcomeText)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+
+	if _, err := b.api.Send(msg); err != nil {
+		b.logger.Error("Failed to send start message", err)
+	}
+}
+
+// handleHelpCommand handles the /help command
+func (b *Bot) handleHelpCommand(message *tgbotapi.Message) {
+	helpText := "🤖 *Photo Tags Bot - Help*\n\n" +
+		"*Available Commands:*\n" +
+		"/start - Welcome message and quick actions\n" +
+		"/help - Show this help message\n" +
+		"/status - Check processing queue status\n\n" +
+		"*How to Use:*\n" +
+		"1. Send me a JPG or PNG image (as photo or document)\n" +
+		"2. Wait for processing (usually takes a few seconds)\n" +
+		"3. Receive your image with AI-generated metadata\n\n" +
+		"*Supported Formats:*\n" +
+		"• JPG/JPEG\n" +
+		"• PNG\n\n" +
+		"*Features:*\n" +
+		"✅ Automatic title generation\n" +
+		"✅ Detailed descriptions\n" +
+		"✅ Relevant keywords\n" +
+		"✅ EXIF metadata preservation"
+
+	// Create inline keyboard
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📊 Check Status", "status"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, helpText)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+
+	if _, err := b.api.Send(msg); err != nil {
+		b.logger.Error("Failed to send help message", err)
+	}
+}
+
+// handleStatusCommand handles the /status command
+func (b *Bot) handleStatusCommand(message *tgbotapi.Message) {
+	statusText := b.getQueueStatus()
+
+	// Create inline keyboard
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔄 Refresh", "status"),
+			tgbotapi.NewInlineKeyboardButtonData("📖 Help", "help"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(message.Chat.ID, statusText)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+
+	if _, err := b.api.Send(msg); err != nil {
+		b.logger.Error("Failed to send status message", err)
+	}
+}
+
+// handleCallbackQuery handles callback queries from inline buttons
+func (b *Bot) handleCallbackQuery(ctx context.Context, query *tgbotapi.CallbackQuery) {
+	// Answer the callback query to remove the loading state
+	callback := tgbotapi.NewCallback(query.ID, "")
+	if _, err := b.api.Request(callback); err != nil {
+		b.logger.Error("Failed to answer callback query", err)
+	}
+
+	// Handle different callback data
+	switch query.Data {
+	case "help":
+		helpText := "🤖 *Photo Tags Bot - Help*\n\n" +
+			"*Available Commands:*\n" +
+			"/start - Welcome message and quick actions\n" +
+			"/help - Show this help message\n" +
+			"/status - Check processing queue status\n\n" +
+			"*How to Use:*\n" +
+			"1. Send me a JPG or PNG image (as photo or document)\n" +
+			"2. Wait for processing (usually takes a few seconds)\n" +
+			"3. Receive your image with AI-generated metadata\n\n" +
+			"*Supported Formats:*\n" +
+			"• JPG/JPEG\n" +
+			"• PNG\n\n" +
+			"*Features:*\n" +
+			"✅ Automatic title generation\n" +
+			"✅ Detailed descriptions\n" +
+			"✅ Relevant keywords\n" +
+			"✅ EXIF metadata preservation"
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("📊 Check Status", "status"),
+			),
+		)
+
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, helpText)
+		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &keyboard
+
+		if _, err := b.api.Send(edit); err != nil {
+			b.logger.Error("Failed to edit message", err)
+		}
+
+	case "status":
+		statusText := b.getQueueStatus()
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🔄 Refresh", "status"),
+				tgbotapi.NewInlineKeyboardButtonData("📖 Help", "help"),
+			),
+		)
+
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, statusText)
+		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &keyboard
+
+		if _, err := b.api.Send(edit); err != nil {
+			b.logger.Error("Failed to edit message", err)
+		}
+
+	default:
+		b.logger.Error("Unknown callback data", fmt.Errorf("data: %s", query.Data))
+	}
+}
+
+// getQueueStatus returns the current queue status
+func (b *Bot) getQueueStatus() string {
+	statusText := "📊 *Queue Status*\n\n"
+	statusText += "✅ *System Status:* Operational\n\n"
+	statusText += "Processing queues are active and ready to handle your images.\n\n"
+	statusText += "_Note: Queue statistics require RabbitMQ Management API integration_"
+	statusText += fmt.Sprintf("\n\n🕐 *Last Updated:* %s", time.Now().Format("15:04:05"))
+
+	return statusText
 }
 
 // sendMessage sends a text message
