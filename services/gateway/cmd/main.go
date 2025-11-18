@@ -12,6 +12,7 @@ import (
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
 	"github.com/shabohin/photo-tags/pkg/storage"
+	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 	"github.com/shabohin/photo-tags/services/gateway/internal/handler"
 	"github.com/shabohin/photo-tags/services/gateway/internal/monitoring"
@@ -75,8 +76,25 @@ func main() {
 	}
 	defer rabbitmqClient.Close()
 
+	// Initialize batch processing components
+	batchStorage := batch.NewStorage()
+	wsHub := batch.NewHub(logger)
+	batchProcessor := batch.NewProcessor(batchStorage, minioClient, rabbitmqClient, wsHub, logger)
+	batchHandler := batch.NewHandler(batchProcessor, batchStorage, wsHub, logger)
+
+	// Start WebSocket hub
+	go wsHub.Run()
+	logger.Info("WebSocket hub started", nil)
+
+	// Start batch processing consumer
+	if err := batchProcessor.StartProcessedImageConsumer(ctx); err != nil {
+		logger.Error("Failed to start batch consumer", err)
+		os.Exit(1)
+	}
+	logger.Info("Batch processing consumer started", nil)
+
 	// Create and start HTTP handler
-	httpHandler := handler.NewHandler(logger, cfg, rabbitmqClient)
+	httpHandler := handler.NewHandler(logger, cfg, batchHandler, rabbitmqClient)
 	go func() {
 		if err := httpHandler.StartServer(ctx); err != nil {
 			logger.Error("HTTP server error", err)

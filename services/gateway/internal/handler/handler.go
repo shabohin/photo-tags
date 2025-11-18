@@ -9,6 +9,7 @@ import (
 
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/messaging"
+	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 )
 
@@ -16,14 +17,16 @@ import (
 type Handler struct {
 	logger       *logging.Logger
 	cfg          *config.Config
+	batchHandler *batch.Handler
 	adminHandler *AdminHandler
 }
 
 // NewHandler creates a new Handler
-func NewHandler(logger *logging.Logger, cfg *config.Config, rabbitmqClient messaging.RabbitMQInterface) *Handler {
+func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler, rabbitmqClient messaging.RabbitMQInterface) *Handler {
 	return &Handler{
 		logger:       logger,
 		cfg:          cfg,
+		batchHandler: batchHandler,
 		adminHandler: NewAdminHandler(logger, rabbitmqClient),
 	}
 }
@@ -52,6 +55,11 @@ func (h *Handler) SetupRoutes() http.Handler {
 
 	// Add routes
 	mux.HandleFunc("/health", h.HealthCheck)
+
+	// Add batch API routes if batch handler is configured
+	if h.batchHandler != nil {
+		h.batchHandler.SetupRoutes(mux)
+	}
 
 	// Admin routes
 	mux.HandleFunc("/admin/failed-jobs", h.adminHandler.FailedJobsUI)
