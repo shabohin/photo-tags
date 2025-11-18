@@ -36,6 +36,23 @@ services:
             timeout: 5s
             retries: 5
 
+    postgres:
+        container_name: postgres
+        image: postgres:16-alpine
+        ports:
+            - '5432:5432'
+        environment:
+            POSTGRES_DB: photo_tags
+            POSTGRES_USER: photo_tags_user
+            POSTGRES_PASSWORD: photo_tags_password
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U photo_tags_user -d photo_tags']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
     gateway:
         container_name: gateway
         build:
@@ -50,12 +67,19 @@ services:
                 condition: service_healthy
             minio:
                 condition: service_healthy
+            postgres:
+                condition: service_healthy
         env_file: .env
         environment:
             - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - POSTGRES_HOST=postgres
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=photo_tags
+            - POSTGRES_USER=photo_tags_user
+            - POSTGRES_PASSWORD=photo_tags_password
 
     analyzer:
         container_name: analyzer
@@ -182,6 +206,7 @@ services:
 volumes:
     rabbitmq_data:
     minio_data:
+    postgres_data:
     processor_temp:
     filewatcher_input:
     filewatcher_output:
