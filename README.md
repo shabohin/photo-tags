@@ -26,13 +26,30 @@ The Analyzer service automatically:
 
 ## Installation and Launch
 
-### Prerequisites
+### Deployment Options
+
+The service supports two deployment methods:
+
+1. **Docker Deployment** (Recommended for most users)
+   - Easier setup with consistent environment
+   - Best for development teams and production servers
+   - See [Docker Setup](#docker-deployment) below
+
+2. **Native/Local Deployment** (Recommended for Raspberry Pi and resource-constrained devices)
+   - Better performance on ARM devices
+   - Lower memory footprint
+   - Direct access to system resources
+   - See [Local Deployment Guide](docs/LOCAL_DEPLOYMENT.md)
+
+### Docker Deployment
+
+#### Prerequisites
 
 -   Docker and Docker Compose
 -   Telegram bot token (get from [@BotFather](https://t.me/BotFather))
 -   OpenRouter API key for accessing vision models (free tier available)
 
-### Starting the Project
+#### Starting the Project
 
 1. Clone the repository:
 
@@ -60,13 +77,54 @@ The Analyzer service automatically:
     ./scripts/setup.sh
     ```
 
-### Stopping Services
+#### Stopping Services
 
 To stop all services, use:
 
 ```bash
 ./scripts/stop.sh
 ```
+
+### Local/Native Deployment
+
+For running on bare metal without Docker (recommended for Raspberry Pi, macOS development, or resource-constrained environments):
+
+#### Quick Start
+
+```bash
+# 1. Install all dependencies
+./scripts/install-local.sh
+
+# 2. Configure environment
+cp config/.env.local.example config/.env.local
+# Edit config/.env.local and set TELEGRAM_TOKEN and OPENROUTER_API_KEY
+
+# 3. Start all services
+./scripts/run-local.sh start
+
+# 4. Check status
+./scripts/run-local.sh status
+```
+
+#### Platform Support
+
+- ✅ **macOS** (Intel and Apple Silicon M1/M2/M3)
+- ✅ **Linux** (Ubuntu, Debian, Raspberry Pi OS)
+- ✅ **ARM64** (Raspberry Pi 3/4, other ARM devices)
+- ✅ **x86_64** (Standard Linux servers)
+
+#### Managing Services
+
+```bash
+./scripts/run-local.sh start    # Start all services
+./scripts/run-local.sh stop     # Stop all services
+./scripts/run-local.sh restart  # Restart all services
+./scripts/run-local.sh status   # Show service status
+./scripts/run-local.sh logs     # View all logs
+./scripts/run-local.sh build    # Rebuild services
+```
+
+For detailed platform-specific instructions, troubleshooting, and configuration options, see the [Local Deployment Guide](docs/LOCAL_DEPLOYMENT.md).
 
 ## Usage
 
