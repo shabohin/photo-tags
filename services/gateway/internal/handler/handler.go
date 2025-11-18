@@ -8,20 +8,23 @@ import (
 	"time"
 
 	"github.com/shabohin/photo-tags/pkg/logging"
+	"github.com/shabohin/photo-tags/services/gateway/internal/batch"
 	"github.com/shabohin/photo-tags/services/gateway/internal/config"
 )
 
 // Handler handles HTTP requests
 type Handler struct {
-	logger *logging.Logger
-	cfg    *config.Config
+	logger       *logging.Logger
+	cfg          *config.Config
+	batchHandler *batch.Handler
 }
 
 // NewHandler creates a new Handler
-func NewHandler(logger *logging.Logger, cfg *config.Config) *Handler {
+func NewHandler(logger *logging.Logger, cfg *config.Config, batchHandler *batch.Handler) *Handler {
 	return &Handler{
-		logger: logger,
-		cfg:    cfg,
+		logger:       logger,
+		cfg:          cfg,
+		batchHandler: batchHandler,
 	}
 }
 
@@ -49,6 +52,11 @@ func (h *Handler) SetupRoutes() http.Handler {
 
 	// Add routes
 	mux.HandleFunc("/health", h.HealthCheck)
+
+	// Add batch API routes if batch handler is configured
+	if h.batchHandler != nil {
+		h.batchHandler.SetupRoutes(mux)
+	}
 
 	// Log middleware
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
