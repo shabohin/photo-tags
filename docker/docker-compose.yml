@@ -76,15 +76,12 @@ services:
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
             - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-        # env_file: ${ENV_FILE}
 
     processor:
         container_name: processor
         build:
-            context: ..
-            dockerfile: docker/Dockerfile.service
-            args:
-                SERVICE: processor
+            context: ../services/processor
+            dockerfile: Dockerfile
         depends_on:
             rabbitmq:
                 condition: service_healthy
@@ -92,10 +89,23 @@ services:
                 condition: service_healthy
         environment:
             - RABBITMQ_URL=amqp://user:password@rabbitmq:5672/
+            - RABBITMQ_CONSUMER_QUEUE=metadata_generated
+            - RABBITMQ_PUBLISHER_QUEUE=image_processed
             - MINIO_ENDPOINT=minio:9000
             - MINIO_ACCESS_KEY=minioadmin
             - MINIO_SECRET_KEY=minioadmin
+            - MINIO_ORIGINAL_BUCKET=original
+            - MINIO_PROCESSED_BUCKET=processed
+            - EXIFTOOL_BINARY_PATH=/usr/bin/exiftool
+            - EXIFTOOL_TEMP_DIR=/tmp/processor
+            - WORKER_CONCURRENCY=3
+            - LOG_LEVEL=info
+            - LOG_FORMAT=json
+        restart: unless-stopped
+        volumes:
+            - processor_temp:/tmp/processor
 
 volumes:
     rabbitmq_data:
     minio_data:
+    processor_temp:
