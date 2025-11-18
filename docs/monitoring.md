@@ -137,7 +137,99 @@ The Datadog Agent will automatically start and begin collecting data.
 
 ### Analyzer Service
 
-(Analyzer-specific metrics will be added when implemented in the service)
+#### OpenRouter API Metrics
+
+- `photo_tags.openrouter.analyze_image.requests` (count)
+  - Image analysis requests sent to OpenRouter API
+
+- `photo_tags.openrouter.analyze_image.success` (count)
+  - Successfully completed image analyses
+
+- `photo_tags.openrouter.analyze_image.duration` (timing, ms)
+  - Tags: `status:success`
+  - Time taken to analyze an image
+
+- `photo_tags.openrouter.analyze_image.errors` (count)
+  - Tags: `error:network|rate_limit|server_error|client_error`
+  - Failed image analysis requests
+
+- `photo_tags.openrouter.get_models.requests` (count)
+  - Requests to fetch available models
+
+- `photo_tags.openrouter.get_models.success` (count)
+  - Successfully fetched model lists
+
+- `photo_tags.openrouter.get_models.errors` (count)
+  - Tags: `error:network|rate_limit`
+  - Failed model fetch requests
+
+- `photo_tags.openrouter.models_count` (gauge)
+  - Number of available models from OpenRouter
+
+- `photo_tags.openrouter.metadata.keywords_count` (histogram)
+  - Distribution of keyword counts in generated metadata
+
+#### Model Selector Metrics
+
+- `photo_tags.model_selector.update.attempts` (count)
+  - Model selection update attempts
+
+- `photo_tags.model_selector.update.success` (count)
+  - Successful model selections
+
+- `photo_tags.model_selector.update.errors` (count)
+  - Tags: `error:fetch_failed|selection_failed`
+  - Failed model selection attempts
+
+- `photo_tags.model_selector.model_changed` (count)
+  - Number of times the selected model changed
+
+- `photo_tags.model_selector.fallback_used` (count)
+  - Tags: `reason:fetch_failed|selection_failed`
+  - Times fallback model was used
+
+- `photo_tags.model_selector.context_length` (gauge)
+  - Tags: `model:model_id`
+  - Context length of currently selected model
+
+#### Image Processing Metrics
+
+- `photo_tags.image.processing.started` (count)
+  - Image processing jobs started
+
+- `photo_tags.image.processing.success` (count)
+  - Successfully processed images
+
+- `photo_tags.image.processing.failed` (count)
+  - Tags: `error:max_retries`
+  - Failed image processing jobs
+
+- `photo_tags.image.processing.duration` (timing, ms)
+  - Tags: `status:success`
+  - Total time to process an image (including retries)
+
+- `photo_tags.image.processing.retries` (gauge)
+  - Number of retries needed for processing
+
+#### RabbitMQ Metrics (Analyzer)
+
+- `photo_tags.rabbitmq.messages.consumed` (count)
+  - Tags: `queue:image_upload`
+  - Messages consumed from RabbitMQ
+
+- `photo_tags.rabbitmq.messages.published` (count)
+  - Tags: `queue:metadata_generated`
+  - Messages published to RabbitMQ
+
+- `photo_tags.rabbitmq.messages.publish.errors` (count)
+  - Tags: `queue:metadata_generated`, `error:publish_failed`
+  - Failed message publishes
+
+#### Message Processor Metrics
+
+- `photo_tags.message_processor.errors` (count)
+  - Tags: `error:unmarshal_failed`
+  - Message processing errors
 
 ## Dashboards
 
