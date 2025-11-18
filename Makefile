@@ -51,6 +51,11 @@ test: ## Run all tests
 	@echo "$(YELLOW)Running tests...$(RESET)"
 	@./scripts/test.sh
 
+.PHONY: test-integration
+test-integration: ## Run integration tests with docker-compose dependencies
+	@echo "$(YELLOW)Running integration tests...$(RESET)"
+	@./scripts/test-integration.sh
+
 .PHONY: check
 check: ## Run all quality checks (tests + linting)
 	@echo "$(YELLOW)Running all quality checks...$(RESET)"
