@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/shabohin/photo-tags/pkg/logging"
 	"github.com/shabohin/photo-tags/pkg/models"
+	amqp "github.com/streadway/amqp"
 )
 
 type mockMinIOClient struct{}
@@ -18,35 +22,50 @@ func (m *mockMinIOClient) EnsureBucketExists(ctx context.Context, bucketName str
 	return nil
 }
 
-func (m *mockMinIOClient) UploadFile(ctx context.Context, bucketName, objectName string, data []byte, size int64) error {
+func (m *mockMinIOClient) UploadFile(ctx context.Context, bucketName, objectName string, reader io.Reader, contentType string) error {
 	return nil
 }
 
-func (m *mockMinIOClient) DownloadFile(ctx context.Context, bucketName, objectName string) ([]byte, error) {
-	return []byte{}, nil
+func (m *mockMinIOClient) DownloadFile(ctx context.Context, bucketName, objectName string) (*minio.Object, error) {
+	return nil, nil
 }
 
-func (m *mockMinIOClient) GetPresignedURL(ctx context.Context, bucketName, objectName string) (string, error) {
+func (m *mockMinIOClient) GetPresignedURL(ctx context.Context, bucketName, objectName string, expiry time.Duration) (string, error) {
 	return "http://example.com/test.jpg", nil
 }
 
 type mockRabbitMQClient struct{}
 
-func (m *mockRabbitMQClient) Publish(queueName string, data []byte) error {
+func (m *mockRabbitMQClient) PublishMessage(queueName string, message interface{}) error {
 	return nil
 }
 
-func (m *mockRabbitMQClient) Consume(queueName string) (<-chan []byte, error) {
-	ch := make(chan []byte)
-	return ch, nil
+func (m *mockRabbitMQClient) PublishMessageWithHeaders(queueName string, message interface{}, headers map[string]interface{}) error {
+	return nil
 }
 
-func (m *mockRabbitMQClient) DeclareQueue(queueName string) (interface{}, error) {
+func (m *mockRabbitMQClient) ConsumeMessages(queueName string, handler func([]byte) error) error {
+	return nil
+}
+
+func (m *mockRabbitMQClient) GetMessages(queueName string, maxMessages int) ([]amqp.Delivery, error) {
 	return nil, nil
 }
 
-func (m *mockRabbitMQClient) Close() error {
+func (m *mockRabbitMQClient) RequeueMessage(queueName string, message []byte) error {
 	return nil
+}
+
+func (m *mockRabbitMQClient) DeclareQueue(name string) (interface{}, error) {
+	return nil, nil
+}
+
+func (m *mockRabbitMQClient) DeclareQueueWithDLQ(name string, dlqName string) (interface{}, error) {
+	return nil, nil
+}
+
+func (m *mockRabbitMQClient) Close() {
+	// no-op
 }
 
 func setupTestHandler() *Handler {
