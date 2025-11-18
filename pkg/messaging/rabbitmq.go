@@ -14,6 +14,7 @@ type RabbitMQInterface interface {
 	PublishMessage(queueName string, message interface{}) error
 	PublishMessageWithHeaders(queueName string, message interface{}, headers map[string]interface{}) error
 	ConsumeMessages(queueName string, handler func([]byte) error) error
+	ConsumeMessagesChannel(queueName string) (<-chan []byte, error)
 	GetMessages(queueName string, maxMessages int) ([]amqp.Delivery, error)
 	RequeueMessage(queueName string, message []byte) error
 	Close()
@@ -198,6 +199,37 @@ func (c *RabbitMQClient) ConsumeMessages(queueName string, handler func([]byte) 
 	}()
 
 	return nil
+}
+
+// ConsumeMessagesChannel consumes messages from the given queue and returns a channel
+func (c *RabbitMQClient) ConsumeMessagesChannel(queueName string) (<-chan []byte, error) {
+	// Get messages from queue
+	msgs, err := c.channel.Consume(
+		queueName, // queue
+		"",        // consumer
+		true,      // auto-ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,       // args
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create output channel
+	out := make(chan []byte)
+
+	// Forward messages to output channel
+	go func() {
+		defer close(out)
+		for msg := range msgs {
+			log.Printf("Received message from queue: %s", queueName)
+			out <- msg.Body
+		}
+	}()
+
+	return out, nil
 }
 
 // GetMessages retrieves messages from a queue without consuming them permanently

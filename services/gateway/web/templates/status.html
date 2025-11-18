@@ -1,0 +1,97 @@
+{{define "status"}}
+<div class="status-card {{.Status}}"
+     {{if not .IsComplete}}
+     hx-get="/api/status/{{.TraceID}}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+     {{end}}>
+
+    <div class="status-header">
+        {{if eq .Status "uploading"}}
+            <sl-icon name="cloud-upload" style="font-size: 1.5rem; color: var(--sl-color-sky-600);"></sl-icon>
+        {{else if eq .Status "analyzing"}}
+            <sl-spinner style="font-size: 1.5rem; --indicator-color: var(--sl-color-purple-600);"></sl-spinner>
+        {{else if eq .Status "processing"}}
+            <sl-spinner style="font-size: 1.5rem; --indicator-color: var(--sl-color-blue-600);"></sl-spinner>
+        {{else if eq .Status "completed"}}
+            <sl-icon name="check-circle-fill" style="font-size: 1.5rem; color: var(--sl-color-green-600);"></sl-icon>
+        {{else if eq .Status "failed"}}
+            <sl-icon name="x-circle-fill" style="font-size: 1.5rem; color: var(--sl-color-red-600);"></sl-icon>
+        {{end}}
+
+        <h3 class="status-title">
+            {{if eq .Status "uploading"}}Uploading...
+            {{else if eq .Status "analyzing"}}Analyzing Image...
+            {{else if eq .Status "processing"}}Processing Metadata...
+            {{else if eq .Status "completed"}}Completed!
+            {{else if eq .Status "failed"}}Failed
+            {{else}}Processing...
+            {{end}}
+        </h3>
+    </div>
+
+    <p class="status-message">
+        {{if eq .Status "uploading"}}Your image is being uploaded to storage.
+        {{else if eq .Status "analyzing"}}AI is analyzing the image content and generating metadata.
+        {{else if eq .Status "processing"}}Writing metadata to the image file.
+        {{else if eq .Status "completed"}}Your image has been processed successfully!
+        {{else if eq .Status "failed"}}An error occurred during processing.
+        {{else}}Processing your image...
+        {{end}}
+    </p>
+
+    {{if .Error}}
+    <sl-alert variant="danger" open>
+        <sl-icon slot="icon" name="exclamation-triangle"></sl-icon>
+        <strong>Error:</strong> {{.Error}}
+    </sl-alert>
+    {{end}}
+
+    {{if .IsComplete}}
+        {{if eq .Status "completed"}}
+        <div style="margin-top: 1rem;">
+            <sl-card>
+                <div slot="header">
+                    <strong>Generated Metadata</strong>
+                </div>
+
+                {{if .Metadata}}
+                <div class="metadata-section">
+                    <h3>Title</h3>
+                    <p class="metadata-value">{{.Metadata.Title}}</p>
+                </div>
+
+                <div class="metadata-section">
+                    <h3>Description</h3>
+                    <p class="metadata-value">{{.Metadata.Description}}</p>
+                </div>
+
+                <div class="metadata-section">
+                    <h3>Keywords</h3>
+                    <div class="keywords-list">
+                        {{range .Metadata.Keywords}}
+                        <sl-tag variant="primary" size="small">{{.}}</sl-tag>
+                        {{end}}
+                    </div>
+                </div>
+
+                <div slot="footer">
+                    <sl-button variant="success" href="/image/{{.ImageID}}">
+                        <sl-icon slot="prefix" name="eye"></sl-icon>
+                        View Details
+                    </sl-button>
+                    <sl-button variant="primary" href="/api/image/{{.ImageID}}/download">
+                        <sl-icon slot="prefix" name="download"></sl-icon>
+                        Download
+                    </sl-button>
+                </div>
+            </sl-card>
+        </div>
+        {{end}}
+    {{end}}
+
+    {{if not .IsComplete}}
+    <sl-progress-bar indeterminate></sl-progress-bar>
+    {{end}}
+</div>
+{{end}}

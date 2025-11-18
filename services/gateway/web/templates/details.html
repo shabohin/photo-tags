@@ -1,0 +1,123 @@
+{{define "details"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Image.Metadata.Title}}{{.Image.Metadata.Title}}{{else}}Image Details{{end}} - Photo Tags</title>
+
+    <!-- Shoelace CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Shoelace JS -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace-autoloader.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div style="margin-bottom: 1.5rem;">
+            <sl-breadcrumb>
+                <sl-breadcrumb-item href="/">
+                    <sl-icon name="house"></sl-icon>
+                    Home
+                </sl-breadcrumb-item>
+                <sl-breadcrumb-item href="/gallery">Gallery</sl-breadcrumb-item>
+                <sl-breadcrumb-item>{{if .Image.Metadata.Title}}{{.Image.Metadata.Title}}{{else}}Image{{end}}</sl-breadcrumb-item>
+            </sl-breadcrumb>
+        </div>
+
+        <div class="image-detail-container">
+            <img src="/api/image/{{.Image.ID}}/view"
+                 alt="{{.Image.Metadata.Title}}"
+                 class="image-detail-preview">
+
+            <div class="image-detail-content">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+                    <div>
+                        <h1 style="margin: 0 0 0.5rem 0;">
+                            {{if .Image.Metadata.Title}}{{.Image.Metadata.Title}}{{else}}{{.Image.OriginalFilename}}{{end}}
+                        </h1>
+                        <sl-badge variant="{{if eq .Image.Status "completed"}}success{{else if eq .Image.Status "failed"}}danger{{else}}warning{{end}}">
+                            {{.Image.Status}}
+                        </sl-badge>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <sl-button variant="primary" size="large" href="/api/image/{{.Image.ID}}/download">
+                        <sl-icon slot="prefix" name="download"></sl-icon>
+                        Download Processed
+                    </sl-button>
+                    <sl-button variant="default" size="large" href="/api/image/{{.Image.ID}}/download-original">
+                        <sl-icon slot="prefix" name="file-earmark-image"></sl-icon>
+                        Download Original
+                    </sl-button>
+                    <sl-button variant="default" size="large" href="/gallery">
+                        <sl-icon slot="prefix" name="grid"></sl-icon>
+                        Back to Gallery
+                    </sl-button>
+                </div>
+
+                <sl-divider></sl-divider>
+
+                {{if .Image.Metadata}}
+                <div class="metadata-section">
+                    <h3>Description</h3>
+                    <p class="metadata-value">{{.Image.Metadata.Description}}</p>
+                </div>
+
+                <sl-divider></sl-divider>
+
+                <div class="metadata-section">
+                    <h3>Keywords ({{len .Image.Metadata.Keywords}})</h3>
+                    <div class="keywords-list">
+                        {{range .Image.Metadata.Keywords}}
+                        <sl-tag variant="primary">{{.}}</sl-tag>
+                        {{end}}
+                    </div>
+                </div>
+
+                <sl-divider></sl-divider>
+                {{end}}
+
+                <div class="metadata-section">
+                    <h3>File Information</h3>
+                    <sl-details summary="Show Details">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid var(--sl-color-neutral-200);">
+                                <td style="padding: 0.5rem; font-weight: 600;">Original Filename</td>
+                                <td style="padding: 0.5rem;">{{.Image.OriginalFilename}}</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--sl-color-neutral-200);">
+                                <td style="padding: 0.5rem; font-weight: 600;">Uploaded</td>
+                                <td style="padding: 0.5rem;">{{.Image.UploadedAt}}</td>
+                            </tr>
+                            {{if .Image.CompletedAt}}
+                            <tr style="border-bottom: 1px solid var(--sl-color-neutral-200);">
+                                <td style="padding: 0.5rem; font-weight: 600;">Completed</td>
+                                <td style="padding: 0.5rem;">{{.Image.CompletedAt}}</td>
+                            </tr>
+                            {{end}}
+                            <tr style="border-bottom: 1px solid var(--sl-color-neutral-200);">
+                                <td style="padding: 0.5rem; font-weight: 600;">Trace ID</td>
+                                <td style="padding: 0.5rem; font-family: monospace; font-size: 0.875rem;">{{.Image.TraceID}}</td>
+                            </tr>
+                        </table>
+                    </sl-details>
+                </div>
+
+                {{if .Image.Error}}
+                <sl-divider></sl-divider>
+                <sl-alert variant="danger" open>
+                    <sl-icon slot="icon" name="exclamation-triangle"></sl-icon>
+                    <strong>Error:</strong> {{.Image.Error}}
+                </sl-alert>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

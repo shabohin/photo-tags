@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Photo Tags</title>
+
+    <!-- Shoelace CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/light.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Shoelace JS -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace-autoloader.js"></script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <sl-icon name="image"></sl-icon>
+                Photo Tags
+            </h1>
+            <p>AI-powered image metadata generation</p>
+        </div>
+
+        <div class="tabs-section">
+            <sl-tab-group>
+                <sl-tab slot="nav" panel="upload" {{if eq .ActiveTab "upload"}}active{{end}}>
+                    <sl-icon name="cloud-upload"></sl-icon>
+                    Upload
+                </sl-tab>
+                <sl-tab slot="nav" panel="gallery" {{if eq .ActiveTab "gallery"}}active{{end}}>
+                    <sl-icon name="grid"></sl-icon>
+                    Gallery
+                </sl-tab>
+
+                <sl-tab-panel name="upload" {{if eq .ActiveTab "upload"}}active{{end}}>
+                    {{if eq .ActiveTab "upload"}}
+                        {{template "upload" .}}
+                    {{end}}
+                </sl-tab-panel>
+
+                <sl-tab-panel name="gallery" {{if eq .ActiveTab "gallery"}}active{{end}}
+                    hx-get="/api/images"
+                    hx-trigger="intersect once"
+                    hx-indicator=".gallery-loading">
+                    {{if eq .ActiveTab "gallery"}}
+                        {{template "gallery" .}}
+                    {{end}}
+                    <div class="gallery-loading htmx-indicator" style="text-align: center; padding: 2rem;">
+                        <sl-spinner style="font-size: 3rem;"></sl-spinner>
+                    </div>
+                </sl-tab-panel>
+            </sl-tab-group>
+        </div>
+    </div>
+
+    <script>
+        // Handle tab switching
+        document.querySelector('sl-tab-group').addEventListener('sl-tab-show', (event) => {
+            const panelName = event.detail.name;
+            if (panelName === 'upload') {
+                window.location.href = '/';
+            } else if (panelName === 'gallery') {
+                window.location.href = '/gallery';
+            }
+        });
+    </script>
+</body>
+</html>
